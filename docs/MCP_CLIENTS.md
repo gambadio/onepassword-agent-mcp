@@ -11,7 +11,7 @@ The bridge CLI can configure common clients for you.
 ## Install The Bridge
 
 ```bash
-npm install -g github:gambadio/onepassword-agent-bridge
+npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
 ```
 
 ## Claude Code

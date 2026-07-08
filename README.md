@@ -19,7 +19,7 @@ The repo does not contain any user's 1Password data. Each install connects to th
 Install the bridge from this public GitHub repo:
 
 ```bash
-npm install -g github:gambadio/onepassword-agent-bridge
+npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
 ```
 
 Check your local setup:
