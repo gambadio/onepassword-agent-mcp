@@ -8,9 +8,9 @@ import { loadOrCreateKey, openJson, sealJson } from "../src/cryptoBox.js";
 
 test("sealJson/openJson round-trips payloads", () => {
   const key = crypto.randomBytes(32);
-  const token = sealJson({ secretRef: "op://Private/GitHub/password" }, key);
+  const token = sealJson({ secretRef: "op://ExampleVault/ExampleLogin/password" }, key);
   assert.match(token, /^opmcp:v1:/);
-  assert.deepEqual(openJson(token, key), { secretRef: "op://Private/GitHub/password" });
+  assert.deepEqual(openJson(token, key), { secretRef: "op://ExampleVault/ExampleLogin/password" });
 });
 
 test("openJson rejects tokens with the wrong key", () => {

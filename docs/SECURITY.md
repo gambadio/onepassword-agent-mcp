@@ -33,13 +33,13 @@
 The local policy stores encrypted 1Password secret references, not passwords. A secret reference looks like:
 
 ```text
-op://Private/GitHub/password
+op://ExampleVault/ExampleLogin/password
 ```
 
 At paste time the server calls:
 
 ```bash
-op read --no-newline "op://Private/GitHub/password"
+op read --no-newline "op://ExampleVault/ExampleLogin/password"
 ```
 
 This gets the latest password from 1Password and avoids keeping password material in project files.

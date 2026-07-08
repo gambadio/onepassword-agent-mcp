@@ -40,7 +40,6 @@
     "setup": "node dist/src/cli.js setup",
     "doctor": "node dist/src/cli.js doctor",
     "prepack": "npm run build",
-    "prepare": "npm run build",
     "test": "node --test --import tsx tests/*.test.ts"
   },
   "dependencies": {

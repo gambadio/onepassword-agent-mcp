@@ -8,6 +8,8 @@ Local MCP access to approved 1Password items for AI agents.
 
 The agent can ask for an approved login, receive an encrypted opaque handle, and paste the password into the active app or browser. The model does not receive the plaintext password. The real secret is resolved locally through the 1Password CLI only at copy or paste time.
 
+The repo does not contain any user's 1Password data. Each install connects to that user's own local 1Password CLI and local approval policy.
+
 > Not affiliated with or endorsed by 1Password.
 
 ![Approval console](docs/screenshots/admin-ui.png)
@@ -203,7 +205,7 @@ Most users should ignore it.
 Use it only when the importer cannot infer the right field, for example a custom token or non-standard field. In 1Password, copy a secret reference such as:
 
 ```text
-op://Private/GitHub/password
+op://ExampleVault/ExampleLogin/password
 ```
 
 Paste that reference into the advanced form. The bridge stores the reference encrypted in local policy. It still does not store the actual password.

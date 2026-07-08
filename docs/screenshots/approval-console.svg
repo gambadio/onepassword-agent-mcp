@@ -31,12 +31,12 @@
   <g font-family="Inter,Arial,sans-serif">
     <rect x="694" y="342" width="686" height="88" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
     <text x="714" y="373" font-size="16" font-weight="800" fill="#1e2633">GitHub</text>
-    <text x="714" y="396" font-size="13" fill="#627084">vault: Personal | site: github.com | field: password</text>
+    <text x="714" y="396" font-size="13" fill="#627084">vault: ExampleVault | site: github.com | field: password</text>
     <rect x="1238" y="367" width="104" height="38" rx="7" fill="#147d73"/>
     <text x="1263" y="391" font-size="14" font-weight="800" fill="#fff">Approve</text>
     <rect x="694" y="446" width="686" height="88" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
     <text x="714" y="477" font-size="16" font-weight="800" fill="#1e2633">Google</text>
-    <text x="714" y="500" font-size="13" fill="#627084">vault: Personal | site: myaccount.google.com | field: password</text>
+    <text x="714" y="500" font-size="13" fill="#627084">vault: ExampleVault | site: myaccount.google.com | field: password</text>
     <rect x="1238" y="471" width="104" height="38" rx="7" fill="#147d73"/>
     <text x="1263" y="495" font-size="14" font-weight="800" fill="#fff">Approve</text>
   </g>
