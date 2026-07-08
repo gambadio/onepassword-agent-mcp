@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="1Password Agent Bridge logo">
+  <defs>
+    <linearGradient id="g" x1="20" x2="108" y1="16" y2="112" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1AA39A"/>
+      <stop offset="1" stop-color="#0F5F58"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="#F5F7FA"/>
+  <path d="M64 14 104 30v30c0 27-16 45-40 54-24-9-40-27-40-54V30l40-16Z" fill="url(#g)"/>
+  <path d="M42 65h44" fill="none" stroke="#fff" stroke-width="10" stroke-linecap="round"/>
+  <path d="M48 53 36 65l12 12M80 53l12 12-12 12" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="64" cy="65" r="11" fill="#F5F7FA"/>
+  <path d="M64 74v13" stroke="#F5F7FA" stroke-width="8" stroke-linecap="round"/>
+</svg>

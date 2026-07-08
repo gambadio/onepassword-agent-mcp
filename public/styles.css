@@ -1,0 +1,318 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7fa;
+  --text: #1e2633;
+  --muted: #627084;
+  --line: #d7dee8;
+  --panel: #ffffff;
+  --accent: #147d73;
+  --accent-strong: #0f5f58;
+  --danger: #b42318;
+  --focus: #2563eb;
+  --soft: #eef5f4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 28px;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.brand img {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: 22px;
+  line-height: 1.2;
+  overflow-wrap: normal;
+}
+
+h2 {
+  font-size: 17px;
+}
+
+h3 {
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 0.9fr) minmax(420px, 1.1fr);
+  gap: 16px;
+  padding: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.hint,
+.summaryLine,
+.meta,
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.summaryLine {
+  min-height: 18px;
+  margin-bottom: 10px;
+}
+
+.pill {
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--accent-strong);
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.importControls,
+.settingsGrid,
+.manualGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) minmax(180px, 0.8fr) 90px;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 12px;
+}
+
+.settingsGrid,
+.manualGrid {
+  grid-template-columns: repeat(2, minmax(220px, 1fr));
+  margin-top: 14px;
+}
+
+.manualGrid button,
+.settingsGrid button {
+  align-self: end;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+  max-height: 560px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+
+.candidate {
+  background: #fbfcfe;
+}
+
+.itemMain {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+details {
+  border-radius: 8px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+label {
+  display: grid;
+  gap: 5px;
+  color: #344054;
+  font-weight: 650;
+}
+
+.check,
+.switch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--text);
+  background: #fff;
+}
+
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+input:focus {
+  outline: 2px solid color-mix(in srgb, var(--focus) 35%, transparent);
+  border-color: var(--focus);
+}
+
+button {
+  height: 36px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button.secondary {
+  background: #fff;
+  color: var(--accent);
+}
+
+button.secondary:hover {
+  background: var(--soft);
+}
+
+button.danger {
+  border-color: var(--danger);
+  background: #fff;
+  color: var(--danger);
+}
+
+button.danger:hover {
+  background: #fff3f0;
+}
+
+.audit {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fbfcfe;
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    align-items: center;
+    padding: 16px;
+  }
+
+  .layout,
+  .importControls,
+  .settingsGrid,
+  .manualGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .item {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .brand {
+    align-items: flex-start;
+  }
+
+  .brand img {
+    width: 34px;
+    height: 34px;
+  }
+
+  h1 {
+    font-size: 19px;
+  }
+
+  button {
+    width: fit-content;
+  }
+}

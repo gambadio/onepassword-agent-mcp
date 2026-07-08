@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>1Password Agent Bridge</title>
+    <link rel="icon" href="/assets/logo.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/assets/logo.svg" alt="" />
+        <div>
+          <h1>1Password Agent Bridge</h1>
+          <p id="statusLine">Checking local server...</p>
+        </div>
+      </div>
+      <button id="refreshBtn" type="button" title="Refresh status">Refresh</button>
+    </header>
+
+    <main class="layout">
+      <section class="panel allowedPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Allowed For Agents</h2>
+            <p class="hint">Approved entries become encrypted MCP handles. Plaintext is only resolved during copy or paste.</p>
+          </div>
+          <span id="grantCount" class="pill"></span>
+        </div>
+        <div id="grants" class="list"></div>
+      </section>
+
+      <section class="panel importPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Find Logins To Approve</h2>
+            <p class="hint">Search by item name, website, vault, or account label.</p>
+          </div>
+          <button id="loadCandidatesBtn" type="button">Search</button>
+        </div>
+        <div class="importControls">
+          <label class="grow">
+            Search
+            <input id="candidateSearchInput" autocomplete="off" placeholder="github, google.com, work email" />
+          </label>
+          <label>
+            Vault
+            <input id="vaultInput" list="vaultOptions" placeholder="Any vault" />
+            <datalist id="vaultOptions"></datalist>
+          </label>
+          <label class="limitField">
+            Limit
+            <input id="limitInput" type="number" min="1" max="500" value="100" />
+          </label>
+        </div>
+        <div id="candidateSummary" class="summaryLine"></div>
+        <div id="candidates" class="list"></div>
+      </section>
+
+      <section class="panel wide">
+        <details>
+          <summary>Advanced: add a copied secret reference</summary>
+          <form id="manualForm" class="manualGrid">
+            <label>
+              Display name
+              <input name="title" required placeholder="GitHub deploy token" />
+            </label>
+            <label>
+              Secret reference
+              <input name="secretRef" required placeholder="op://Private/GitHub/password" />
+            </label>
+            <label>
+              Allowed sites
+              <input name="sites" required placeholder="github.com, *.github.com" />
+            </label>
+            <label>
+              Username
+              <input name="username" placeholder="Optional" />
+            </label>
+            <button type="submit">Add Access</button>
+          </form>
+        </details>
+      </section>
+
+      <section class="panel wide">
+        <details>
+          <summary>Local settings</summary>
+          <form id="settingsForm" class="settingsGrid">
+            <label>
+              1Password CLI path
+              <input name="opPath" />
+            </label>
+            <label>
+              Account
+              <input name="account" placeholder="Optional account shorthand or sign-in address" />
+            </label>
+            <label>
+              Default vault
+              <input name="defaultVault" placeholder="Optional vault name or ID" />
+            </label>
+            <label>
+              Clipboard clear seconds
+              <input name="clipboardClearSeconds" type="number" min="1" max="300" />
+            </label>
+            <label class="check">
+              <input name="allowPasteWithoutSite" type="checkbox" />
+              Allow paste without expected site
+            </label>
+            <button type="submit">Save Settings</button>
+          </form>
+        </details>
+      </section>
+
+      <section class="panel wide">
+        <div class="panelHeader">
+          <h2>Recent Activity</h2>
+        </div>
+        <div id="audit" class="audit"></div>
+      </section>
+    </main>
+
+    <template id="grantTemplate">
+      <article class="item">
+        <div class="itemMain">
+          <h3></h3>
+          <p class="meta"></p>
+          <label>
+            Allowed sites
+            <input class="sitesInput" />
+          </label>
+        </div>
+        <div class="actions">
+          <label class="switch">
+            <input class="enabledInput" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+          <button class="saveBtn secondary" type="button">Save</button>
+          <button class="deleteBtn danger" type="button">Delete</button>
+        </div>
+      </article>
+    </template>
+
+    <template id="candidateTemplate">
+      <article class="item candidate">
+        <div class="itemMain">
+          <h3></h3>
+          <p class="meta"></p>
+          <label>
+            Allowed sites
+            <input class="sitesInput" placeholder="allowed sites, comma-separated" />
+          </label>
+        </div>
+        <button class="approveBtn" type="button">Approve</button>
+      </article>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

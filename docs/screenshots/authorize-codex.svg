@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" role="img" aria-label="1Password CLI authorization prompt">
+  <rect width="720" height="420" fill="#f5f7fa"/>
+  <rect x="130" y="44" width="460" height="332" rx="26" fill="#22252d"/>
+  <text x="218" y="98" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="800" fill="#fff">1Password Access Requested</text>
+  <rect x="246" y="132" width="72" height="72" rx="20" fill="#e9f2ff"/>
+  <circle cx="282" cy="168" r="24" fill="#6772e5"/>
+  <circle cx="360" cy="168" r="12" fill="#53c57a"/>
+  <rect x="402" y="132" width="72" height="72" rx="36" fill="#e9f2ff"/>
+  <circle cx="438" cy="168" r="26" fill="#1f6feb"/>
+  <path d="M438 154a12 12 0 0 1 12 12v14h-24v-14a12 12 0 0 1 12-12Z" fill="#fff"/>
+  <text x="226" y="242" font-family="Inter,Arial,sans-serif" font-size="20" font-weight="700" fill="#fff">Allow your agent to get CLI access</text>
+  <rect x="176" y="270" width="368" height="68" rx="10" fill="#30343d"/>
+  <circle cx="218" cy="304" r="18" fill="#f2d6c9"/>
+  <text x="250" y="311" font-family="Inter,Arial,sans-serif" font-size="17" font-weight="700" fill="#fff">Your 1Password account</text>
+  <rect x="318" y="352" width="82" height="38" rx="10" fill="#373b44"/>
+  <text x="337" y="376" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="700" fill="#fff">Cancel</text>
+  <rect x="414" y="352" width="104" height="38" rx="10" fill="#147dff"/>
+  <text x="436" y="376" font-family="Inter,Arial,sans-serif" font-size="15" font-weight="800" fill="#fff">Authorize</text>
+</svg>
