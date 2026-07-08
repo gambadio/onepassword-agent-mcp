@@ -34,7 +34,7 @@ Click **Authorize** only for MCP clients you trust.
 ## 3. Install The Bridge
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
 ```
 
 Run:
@@ -116,7 +116,7 @@ The agent should not receive the plaintext password.
 Install the latest version from GitHub again:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
 ```
 
 Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling the package.

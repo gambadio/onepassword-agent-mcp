@@ -19,7 +19,7 @@ The repo does not contain any user's 1Password data. Each install connects to th
 Install 1Password Agent MCP from this public GitHub repo:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
 ```
 
 Check your local setup:
