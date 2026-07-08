@@ -4,6 +4,15 @@
   "description": "Local approval bridge that lets MCP agents paste approved 1Password secrets without receiving plaintext.",
   "type": "module",
   "license": "MIT",
+  "files": [
+    "dist/src",
+    "public",
+    "docs",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE",
+    ".env.example"
+  ],
   "keywords": [
     "mcp",
     "model-context-protocol",
@@ -13,7 +22,8 @@
     "ai-agent"
   ],
   "bin": {
-    "onepassword-agent-bridge": "./dist/src/mcp.js",
+    "onepassword-agent-bridge": "./dist/src/cli.js",
+    "onepassword-agent-bridge-mcp": "./dist/src/mcp.js",
     "onepassword-agent-bridge-admin": "./dist/src/admin.js",
     "onepassword-mcp": "./dist/src/mcp.js",
     "onepassword-mcp-admin": "./dist/src/admin.js"
@@ -21,12 +31,16 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "dev": "tsx src/index.ts",
+    "dev": "tsx src/cli.ts admin",
     "dev:admin": "tsx src/admin.ts",
     "dev:mcp": "tsx src/mcp.ts",
-    "start": "node dist/src/index.js",
+    "start": "node dist/src/cli.js admin",
     "start:admin": "node dist/src/admin.js",
     "start:mcp": "node dist/src/mcp.js",
+    "setup": "node dist/src/cli.js setup",
+    "doctor": "node dist/src/cli.js doctor",
+    "prepack": "npm run build",
+    "prepare": "npm run build",
     "test": "node --test --import tsx tests/*.test.ts"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
 import os from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export function appHome(): string {
   return process.env.ONEPASSWORD_MCP_HOME || path.join(os.homedir(), ".onepassword-mcp");
@@ -14,5 +15,13 @@ export function keyPath(): string {
 }
 
 export function publicDir(): string {
-  return path.resolve(process.cwd(), "public");
+  return process.env.ONEPASSWORD_MCP_PUBLIC_DIR || path.join(packageRoot(), "public");
+}
+
+export function packageRoot(): string {
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const parentDir = path.dirname(moduleDir);
+  return path.basename(parentDir) === "dist"
+    ? path.resolve(moduleDir, "../..")
+    : path.resolve(moduleDir, "..");
 }
