@@ -24,12 +24,7 @@
   "bin": {
     "onepassword-agent-mcp": "./dist/src/cli.js",
     "onepassword-agent-mcp-server": "./dist/src/mcp.js",
-    "onepassword-agent-mcp-admin": "./dist/src/admin.js",
-    "onepassword-agent-bridge": "./dist/src/cli.js",
-    "onepassword-agent-bridge-mcp": "./dist/src/mcp.js",
-    "onepassword-agent-bridge-admin": "./dist/src/admin.js",
-    "onepassword-mcp": "./dist/src/mcp.js",
-    "onepassword-mcp-admin": "./dist/src/admin.js"
+    "onepassword-agent-mcp-admin": "./dist/src/admin.js"
   },
   "scripts": {
     "build": "tsc",
