@@ -1,6 +1,6 @@
 # Setup Guide
 
-This guide shows the full local setup flow for 1Password Agent Bridge.
+This guide shows the full local setup flow for 1Password Agent MCP.
 
 ## 1. Install Requirements
 
@@ -34,13 +34,13 @@ Click **Authorize** only for MCP clients you trust.
 ## 3. Install The Bridge
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
 ```
 
 Run:
 
 ```bash
-onepassword-agent-bridge doctor
+onepassword-agent-mcp doctor
 ```
 
 Fix any required checks before continuing.
@@ -50,33 +50,33 @@ Fix any required checks before continuing.
 Dry run:
 
 ```bash
-onepassword-agent-bridge setup all
+onepassword-agent-mcp setup all
 ```
 
 Apply setup for installed clients:
 
 ```bash
-onepassword-agent-bridge setup all --apply
+onepassword-agent-mcp setup all --apply
 ```
 
 Individual clients:
 
 ```bash
-onepassword-agent-bridge setup claude-code --apply
-onepassword-agent-bridge setup codex --apply
-onepassword-agent-bridge setup copilot --apply
+onepassword-agent-mcp setup claude-code --apply
+onepassword-agent-mcp setup codex --apply
+onepassword-agent-mcp setup copilot --apply
 ```
 
 For unsupported clients, print generic MCP JSON:
 
 ```bash
-onepassword-agent-bridge setup generic --json
+onepassword-agent-mcp setup generic --json
 ```
 
 ## 5. Start The Approval Console
 
 ```bash
-onepassword-agent-bridge admin
+onepassword-agent-mcp admin
 ```
 
 Open:
@@ -116,7 +116,7 @@ The agent should not receive the plaintext password.
 Install the latest version from GitHub again:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
 ```
 
 Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling the package.

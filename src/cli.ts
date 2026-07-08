@@ -7,8 +7,8 @@ import { appHome, keyPath, policyPath } from "./paths.js";
 import { OpCli } from "./opCli.js";
 import { StateStore } from "./state.js";
 
-const serverName = "onepassword-agent-bridge";
-const mcpCommand = "onepassword-agent-bridge";
+const serverName = "onepassword-agent-mcp";
+const mcpCommand = "onepassword-agent-mcp";
 const mcpArgs = ["mcp"];
 
 interface ParsedArgs {
@@ -112,7 +112,7 @@ function normalizeTarget(target: string): SetupTarget {
 }
 
 async function doctor(): Promise<void> {
-  console.log("1Password Agent Bridge doctor\n");
+  console.log("1Password Agent MCP doctor\n");
 
   let failures = 0;
   const store = new StateStore();
@@ -161,7 +161,7 @@ async function doctor(): Promise<void> {
       warn(`Admin UI responded with HTTP ${response.status}: ${adminUrl}`);
     }
   } catch {
-    warn(`Admin UI is not running. Start it with: onepassword-agent-bridge admin`);
+    warn(`Admin UI is not running. Start it with: onepassword-agent-mcp admin`);
     console.log(`    Then open ${adminUrl}`);
   }
 
@@ -193,7 +193,7 @@ async function setup(target: SetupTarget, args: ParsedArgs): Promise<void> {
 }
 
 function printSetupPlan(targets: SetupTarget[], scope: string): void {
-  console.log("1Password Agent Bridge MCP setup\n");
+  console.log("1Password Agent MCP setup\n");
   console.log("This dry run does not modify client config. Add --apply to run supported CLI installers.\n");
 
   for (const target of targets) {
@@ -220,8 +220,8 @@ function printSetupPlan(targets: SetupTarget[], scope: string): void {
   }
 
   console.log("After setup, run:");
-  console.log("  onepassword-agent-bridge admin");
-  console.log("  onepassword-agent-bridge doctor");
+  console.log("  onepassword-agent-mcp admin");
+  console.log("  onepassword-agent-mcp doctor");
 }
 
 function applySetup(target: SetupTarget, scope: string): void {
@@ -333,13 +333,13 @@ function fail(message: string): void {
 }
 
 function printHelp(): void {
-  console.log(`1Password Agent Bridge
+  console.log(`1Password Agent MCP
 
 Usage:
-  onepassword-agent-bridge admin
-  onepassword-agent-bridge mcp
-  onepassword-agent-bridge doctor
-  onepassword-agent-bridge setup [all|claude-code|codex|copilot|generic] [--apply]
+  onepassword-agent-mcp admin
+  onepassword-agent-mcp mcp
+  onepassword-agent-mcp doctor
+  onepassword-agent-mcp setup [all|claude-code|codex|copilot|generic] [--apply]
 
 Commands:
   admin      Start the local approval console at http://127.0.0.1:7319
@@ -348,12 +348,12 @@ Commands:
   setup      Print or apply client MCP configuration.
 
 Setup examples:
-  onepassword-agent-bridge setup all
-  onepassword-agent-bridge setup claude-code --apply
-  onepassword-agent-bridge setup claude-code --apply --scope user
-  onepassword-agent-bridge setup codex --apply
-  onepassword-agent-bridge setup copilot --apply
-  onepassword-agent-bridge setup generic --json
+  onepassword-agent-mcp setup all
+  onepassword-agent-mcp setup claude-code --apply
+  onepassword-agent-mcp setup claude-code --apply --scope user
+  onepassword-agent-mcp setup codex --apply
+  onepassword-agent-mcp setup copilot --apply
+  onepassword-agent-mcp setup generic --json
 `);
 }
 

@@ -1,6 +1,6 @@
 # Research Notes
 
-Docs were checked on July 8, 2026 while building 1Password Agent Bridge.
+Docs were checked on July 8, 2026 while building 1Password Agent MCP.
 
 ## MCP TypeScript SDK
 

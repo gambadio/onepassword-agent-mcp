@@ -160,7 +160,7 @@ export async function startAdmin(): Promise<void> {
   const file = await store.load();
   const app = await createAdminApp();
   app.listen(file.settings.adminPort, file.settings.adminHost, () => {
-    console.log(`1Password MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
+    console.log(`1Password Agent MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
   });
 }
 

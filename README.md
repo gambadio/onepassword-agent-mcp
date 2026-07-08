@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="public/assets/logo.svg" width="92" alt="1Password Agent Bridge logo">
+  <img src="public/assets/logo.svg" width="92" alt="1Password Agent MCP logo">
 </p>
 
-# 1Password Agent Bridge
+# 1Password Agent MCP
 
 Local MCP access to approved 1Password items for AI agents.
 
@@ -16,28 +16,28 @@ The repo does not contain any user's 1Password data. Each install connects to th
 
 ## Quick Start
 
-Install the bridge from this public GitHub repo:
+Install 1Password Agent MCP from this public GitHub repo:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
 ```
 
 Check your local setup:
 
 ```bash
-onepassword-agent-bridge doctor
+onepassword-agent-mcp doctor
 ```
 
 Configure the MCP clients you already have installed:
 
 ```bash
-onepassword-agent-bridge setup all --apply
+onepassword-agent-mcp setup all --apply
 ```
 
 Start the local approval console:
 
 ```bash
-onepassword-agent-bridge admin
+onepassword-agent-mcp admin
 ```
 
 Open:
@@ -75,23 +75,23 @@ Enable the 1Password desktop integration:
 The package installs one main command:
 
 ```bash
-onepassword-agent-bridge
+onepassword-agent-mcp
 ```
 
 Useful subcommands:
 
 ```bash
-onepassword-agent-bridge admin        # start the local approval console
-onepassword-agent-bridge mcp          # start the stdio MCP server
-onepassword-agent-bridge doctor       # check Node, op, auth, state, and admin UI
-onepassword-agent-bridge setup all    # print client setup commands
-onepassword-agent-bridge setup all --apply
+onepassword-agent-mcp admin        # start the local approval console
+onepassword-agent-mcp mcp          # start the stdio MCP server
+onepassword-agent-mcp doctor       # check Node, op, auth, state, and admin UI
+onepassword-agent-mcp setup all    # print client setup commands
+onepassword-agent-mcp setup all --apply
 ```
 
 MCP clients should run this server command:
 
 ```bash
-onepassword-agent-bridge mcp
+onepassword-agent-mcp mcp
 ```
 
 You normally do not run `mcp` yourself. Claude Code, Codex, Copilot, or another MCP client starts it when needed.
@@ -101,55 +101,55 @@ You normally do not run `mcp` yourself. Claude Code, Codex, Copilot, or another 
 The setup CLI prints a dry run by default:
 
 ```bash
-onepassword-agent-bridge setup all
+onepassword-agent-mcp setup all
 ```
 
 Apply the setup automatically where a supported CLI is installed:
 
 ```bash
-onepassword-agent-bridge setup all --apply
+onepassword-agent-mcp setup all --apply
 ```
 
 ### Claude Code
 
 ```bash
-onepassword-agent-bridge setup claude-code --apply
+onepassword-agent-mcp setup claude-code --apply
 ```
 
 Equivalent command:
 
 ```bash
-claude mcp add --scope user onepassword-agent-bridge -- onepassword-agent-bridge mcp
+claude mcp add --scope user onepassword-agent-mcp -- onepassword-agent-mcp mcp
 ```
 
 Use another Claude Code scope when you want project-local config instead:
 
 ```bash
-onepassword-agent-bridge setup claude-code --apply --scope local
+onepassword-agent-mcp setup claude-code --apply --scope local
 ```
 
 ### Codex
 
 ```bash
-onepassword-agent-bridge setup codex --apply
+onepassword-agent-mcp setup codex --apply
 ```
 
 Equivalent command:
 
 ```bash
-codex mcp add onepassword-agent-bridge -- onepassword-agent-bridge mcp
+codex mcp add onepassword-agent-mcp -- onepassword-agent-mcp mcp
 ```
 
 ### GitHub Copilot In VS Code
 
 ```bash
-onepassword-agent-bridge setup copilot --apply
+onepassword-agent-mcp setup copilot --apply
 ```
 
 Equivalent VS Code command:
 
 ```bash
-code --add-mcp '{"name":"onepassword-agent-bridge","command":"onepassword-agent-bridge","args":["mcp"]}'
+code --add-mcp '{"name":"onepassword-agent-mcp","command":"onepassword-agent-mcp","args":["mcp"]}'
 ```
 
 If the `code` command is not in your `PATH`, create `.vscode/mcp.json` in your workspace:
@@ -157,9 +157,9 @@ If the `code` command is not in your `PATH`, create `.vscode/mcp.json` in your w
 ```json
 {
   "servers": {
-    "onepassword-agent-bridge": {
+    "onepassword-agent-mcp": {
       "type": "stdio",
-      "command": "onepassword-agent-bridge",
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"]
     }
   }
@@ -171,7 +171,7 @@ If the `code` command is not in your `PATH`, create `.vscode/mcp.json` in your w
 Print generic MCP JSON:
 
 ```bash
-onepassword-agent-bridge setup generic --json
+onepassword-agent-mcp setup generic --json
 ```
 
 Generic config:
@@ -179,8 +179,8 @@ Generic config:
 ```json
 {
   "mcpServers": {
-    "onepassword-agent-bridge": {
-      "command": "onepassword-agent-bridge",
+    "onepassword-agent-mcp": {
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"]
     }
   }
@@ -189,7 +189,7 @@ Generic config:
 
 ## Approving Logins
 
-1. Run `onepassword-agent-bridge admin`.
+1. Run `onepassword-agent-mcp admin`.
 2. Open `http://127.0.0.1:7319`.
 3. Use **Find Logins To Approve**.
 4. Search by title, website, vault, or account label.
@@ -208,7 +208,7 @@ Use it only when the importer cannot infer the right field, for example a custom
 op://ExampleVault/ExampleLogin/password
 ```
 
-Paste that reference into the advanced form. The bridge stores the reference encrypted in local policy. It still does not store the actual password.
+Paste that reference into the advanced form. The local policy stores the reference encrypted. It still does not store the actual password.
 
 ### What Are "Local Settings"?
 
@@ -266,7 +266,7 @@ Default state location:
 Use a different state directory:
 
 ```bash
-ONEPASSWORD_MCP_HOME=/path/to/state onepassword-agent-bridge admin
+ONEPASSWORD_MCP_HOME=/path/to/state onepassword-agent-mcp admin
 ```
 
 Headless service-account example:
@@ -274,8 +274,8 @@ Headless service-account example:
 ```json
 {
   "mcpServers": {
-    "onepassword-agent-bridge": {
-      "command": "onepassword-agent-bridge",
+    "onepassword-agent-mcp": {
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"],
       "env": {
         "OP_SERVICE_ACCOUNT_TOKEN": "ops_..."
@@ -311,7 +311,7 @@ Read [docs/SECURITY.md](docs/SECURITY.md) before using this with powerful browse
 Run:
 
 ```bash
-onepassword-agent-bridge doctor
+onepassword-agent-mcp doctor
 ```
 
 Common fixes:
@@ -320,15 +320,15 @@ Common fixes:
 - 1Password auth failure: enable desktop CLI integration or set `OP_SERVICE_ACCOUNT_TOKEN`.
 - Copilot setup cannot find `code`: install the VS Code shell command or use `.vscode/mcp.json`.
 - Existing MCP entry conflicts: remove the old entry in that client, then run setup again.
-- Admin UI not running: run `onepassword-agent-bridge admin`.
+- Admin UI not running: run `onepassword-agent-mcp admin`.
 
 ## Development
 
 Clone the repo:
 
 ```bash
-git clone https://github.com/gambadio/onepassword-agent-bridge.git
-cd onepassword-agent-bridge
+git clone https://github.com/gambadio/onepassword-agent-mcp.git
+cd onepassword-agent-mcp
 npm install
 ```
 

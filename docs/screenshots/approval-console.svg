@@ -4,7 +4,7 @@
   <rect y="103" width="1440" height="1" fill="#d7dee8"/>
   <rect x="24" y="28" width="48" height="48" rx="14" fill="#147d73"/>
   <path d="M48 36 64 43v14c0 12-6 20-16 24-10-4-16-12-16-24V43l16-7Z" fill="#fff" opacity=".95"/>
-  <text x="88" y="48" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="800" fill="#1e2633">1Password Agent Bridge</text>
+  <text x="88" y="48" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="800" fill="#1e2633">1Password Agent MCP</text>
   <text x="88" y="74" font-family="Inter,Arial,sans-serif" font-size="15" fill="#627084">1Password CLI ready. 0/0 entries allowed.</text>
   <rect x="1290" y="32" width="104" height="40" rx="7" fill="#147d73"/>
   <text x="1316" y="57" font-family="Inter,Arial,sans-serif" font-size="14" font-weight="700" fill="#fff">Refresh</text>

@@ -1,17 +1,17 @@
 # MCP Client Configuration
 
-1Password Agent Bridge is a local stdio MCP server. After installation, clients should launch:
+1Password Agent MCP is a local stdio MCP server. After installation, clients should launch:
 
 ```bash
-onepassword-agent-bridge mcp
+onepassword-agent-mcp mcp
 ```
 
-The bridge CLI can configure common clients for you.
+The CLI can configure common clients for you.
 
-## Install The Bridge
+## Install 1Password Agent MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs/heads/main.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/heads/main.tar.gz
 ```
 
 ## Claude Code
@@ -19,13 +19,13 @@ npm install -g https://github.com/gambadio/onepassword-agent-bridge/archive/refs
 Automatic:
 
 ```bash
-onepassword-agent-bridge setup claude-code --apply
+onepassword-agent-mcp setup claude-code --apply
 ```
 
 Equivalent:
 
 ```bash
-claude mcp add --scope user onepassword-agent-bridge -- onepassword-agent-bridge mcp
+claude mcp add --scope user onepassword-agent-mcp -- onepassword-agent-mcp mcp
 ```
 
 ## Codex
@@ -33,13 +33,13 @@ claude mcp add --scope user onepassword-agent-bridge -- onepassword-agent-bridge
 Automatic:
 
 ```bash
-onepassword-agent-bridge setup codex --apply
+onepassword-agent-mcp setup codex --apply
 ```
 
 Equivalent:
 
 ```bash
-codex mcp add onepassword-agent-bridge -- onepassword-agent-bridge mcp
+codex mcp add onepassword-agent-mcp -- onepassword-agent-mcp mcp
 ```
 
 ## GitHub Copilot In VS Code
@@ -47,13 +47,13 @@ codex mcp add onepassword-agent-bridge -- onepassword-agent-bridge mcp
 Automatic:
 
 ```bash
-onepassword-agent-bridge setup copilot --apply
+onepassword-agent-mcp setup copilot --apply
 ```
 
 Equivalent:
 
 ```bash
-code --add-mcp '{"name":"onepassword-agent-bridge","command":"onepassword-agent-bridge","args":["mcp"]}'
+code --add-mcp '{"name":"onepassword-agent-mcp","command":"onepassword-agent-mcp","args":["mcp"]}'
 ```
 
 Workspace fallback at `.vscode/mcp.json`:
@@ -61,9 +61,9 @@ Workspace fallback at `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "onepassword-agent-bridge": {
+    "onepassword-agent-mcp": {
       "type": "stdio",
-      "command": "onepassword-agent-bridge",
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"]
     }
   }
@@ -75,8 +75,8 @@ Workspace fallback at `.vscode/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "onepassword-agent-bridge": {
-      "command": "onepassword-agent-bridge",
+    "onepassword-agent-mcp": {
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"]
     }
   }
@@ -86,7 +86,7 @@ Workspace fallback at `.vscode/mcp.json`:
 You can print this with:
 
 ```bash
-onepassword-agent-bridge setup generic --json
+onepassword-agent-mcp setup generic --json
 ```
 
 ## With A Service Account Token
@@ -96,8 +96,8 @@ For headless environments, scope a 1Password service account token to the smalle
 ```json
 {
   "mcpServers": {
-    "onepassword-agent-bridge": {
-      "command": "onepassword-agent-bridge",
+    "onepassword-agent-mcp": {
+      "command": "onepassword-agent-mcp",
       "args": ["mcp"],
       "env": {
         "OP_SERVICE_ACCOUNT_TOKEN": "ops_..."
@@ -114,7 +114,7 @@ Do not commit service account tokens.
 Keep the approval console running while setting up policy:
 
 ```bash
-onepassword-agent-bridge admin
+onepassword-agent-mcp admin
 ```
 
 Then open:

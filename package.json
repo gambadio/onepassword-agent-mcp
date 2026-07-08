@@ -1,7 +1,7 @@
 {
-  "name": "onepassword-agent-bridge",
+  "name": "onepassword-agent-mcp",
   "version": "0.1.0",
-  "description": "Local approval bridge that lets MCP agents paste approved 1Password secrets without receiving plaintext.",
+  "description": "Local MCP server that lets agents paste approved 1Password secrets without receiving plaintext.",
   "type": "module",
   "license": "MIT",
   "files": [
@@ -22,6 +22,9 @@
     "ai-agent"
   ],
   "bin": {
+    "onepassword-agent-mcp": "./dist/src/cli.js",
+    "onepassword-agent-mcp-server": "./dist/src/mcp.js",
+    "onepassword-agent-mcp-admin": "./dist/src/admin.js",
     "onepassword-agent-bridge": "./dist/src/cli.js",
     "onepassword-agent-bridge-mcp": "./dist/src/mcp.js",
     "onepassword-agent-bridge-admin": "./dist/src/admin.js",

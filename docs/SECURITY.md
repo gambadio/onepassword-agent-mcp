@@ -1,6 +1,6 @@
 # Security Notes
 
-1Password Agent Bridge is designed to keep plaintext passwords out of the model response path. It does not make the local machine immune to malicious software or a malicious MCP host.
+1Password Agent MCP is designed to keep plaintext passwords out of the model response path. It does not make the local machine immune to malicious software or a malicious MCP host.
 
 ## What Is Protected
 

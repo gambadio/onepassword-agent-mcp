@@ -13,7 +13,7 @@ function jsonResponse(value) {
 }
 export function createMcpServer() {
     const server = new McpServer({
-        name: "onepassword-local-paste",
+        name: "onepassword-agent-mcp",
         version: "0.1.0",
     });
     const policy = new PolicyService();
