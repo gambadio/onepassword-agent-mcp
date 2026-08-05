@@ -18,9 +18,16 @@ export class StateStore {
         try {
             const raw = await fs.readFile(file, "utf8");
             const parsed = JSON.parse(raw);
+            const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+            if (!settings.mcpVaultName.trim()) {
+                settings.mcpVaultName = DEFAULT_SETTINGS.mcpVaultName;
+            }
+            if (!settings.opPath.trim()) {
+                settings.opPath = DEFAULT_SETTINGS.opPath;
+            }
             return {
                 ...parsed,
-                settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+                settings,
                 grants: parsed.grants || [],
                 audit: parsed.audit || [],
             };

@@ -19,7 +19,7 @@ Put only the logins you are comfortable letting agents use into that vault. Then
 Install the package:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.1.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.2.tar.gz
 ```
 
 Check your machine:

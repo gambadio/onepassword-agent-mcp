@@ -69,7 +69,7 @@ export async function createAdminApp() {
         opPath: stringValue(patch.opPath, file.settings.opPath),
         account: stringValue(patch.account, file.settings.account),
         defaultVault: stringValue(patch.defaultVault, file.settings.defaultVault),
-        mcpVaultName: stringValue(patch.mcpVaultName, file.settings.mcpVaultName),
+        mcpVaultName: nonEmptyStringValue(patch.mcpVaultName, file.settings.mcpVaultName),
         clipboardClearSeconds: numberValue(
           patch.clipboardClearSeconds,
           file.settings.clipboardClearSeconds,
@@ -270,6 +270,11 @@ function optionalString(value: unknown): string | undefined {
 
 function stringValue(value: unknown, fallback: string): string {
   return typeof value === "string" ? value.trim() : fallback;
+}
+
+function nonEmptyStringValue(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  return value.trim() || fallback;
 }
 
 function numberValue(value: unknown, fallback: number, min: number, max: number): number {

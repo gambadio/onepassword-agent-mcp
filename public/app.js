@@ -92,6 +92,8 @@ function renderStatus(status) {
   if (mcpVault.exists) {
     const count = typeof mcpVault.items === "number" ? `${mcpVault.items} item${mcpVault.items === 1 ? "" : "s"}` : "ready";
     mcpVaultStatus.textContent = `${mcpVault.name} exists and is the only vault agents can use (${count}).`;
+  } else if (cli.authError) {
+    mcpVaultStatus.textContent = "1Password CLI cannot list vaults. Open and unlock 1Password, then confirm CLI integration is enabled.";
   } else if (cli.installed && cli.authenticated) {
     mcpVaultStatus.textContent = `${mcpVault.name} does not exist yet. Create it before approving logins for agents.`;
   } else {
@@ -113,8 +115,9 @@ function renderVaultOptions(vaults, mcpVaultName) {
   sourceVaultSelect.innerHTML = "";
   const placeholder = document.createElement("option");
   placeholder.value = "";
-  placeholder.textContent = "Choose a source vault";
+  placeholder.textContent = currentStatus?.cli?.authError ? "1Password unavailable" : "Choose a source vault";
   sourceVaultSelect.append(placeholder);
+  sourceVaultSelect.disabled = Boolean(currentStatus?.cli?.authError);
 
   for (const vault of vaults) {
     const value = vault.id || vault.name;
@@ -188,6 +191,10 @@ async function ensureMcpVault() {
 async function loadSourceCandidates() {
   sourceCandidatesEl.innerHTML = "";
   sourceSummary.textContent = "";
+  if (currentStatus?.cli?.authError) {
+    sourceCandidatesEl.append(empty("1Password CLI cannot reach the desktop app. Open and unlock 1Password, then refresh."));
+    return;
+  }
   const vault = sourceVaultSelect.value.trim();
   if (!vault) {
     sourceCandidatesEl.append(empty("Choose a source vault to search."));
@@ -332,6 +339,10 @@ async function loadMcpCandidates() {
   mcpSummary.textContent = "";
   const mcpVault = currentStatus?.cli?.mcpVault;
   const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
+  if (currentStatus?.cli?.authError) {
+    mcpCandidatesEl.append(empty("1Password CLI cannot reach the desktop app. Open and unlock 1Password, then refresh."));
+    return;
+  }
   if (!mcpVault?.exists) {
     mcpCandidatesEl.append(empty(`Create ${name} first, then copy logins into it.`));
     return;
