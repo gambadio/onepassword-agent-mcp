@@ -165,7 +165,7 @@ export class OpCli {
     group?: CandidateGroup;
   }): Promise<CandidateSearchResult> {
     const vault = options.vault || this.settings.defaultVault;
-    const limit = Math.max(1, Math.min(options.limit || 100, 500));
+    const limit = Math.max(1, Math.min(options.limit || 500, 500));
     const query = (options.query || "").trim().toLowerCase();
     const group = options.group || "all";
     const args = [

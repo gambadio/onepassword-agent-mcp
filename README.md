@@ -106,12 +106,12 @@ Enable the 1Password desktop integration:
 
 ## The Local Console
 
-The console is a simple vault-to-vault flow:
+The console is a simple left-to-right vault flow:
 
 - **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
 - **Choose From 1Password** searches your normal vaults and can filter by item type.
-- The **MCPVAULT** card is the drop destination. Drag an item onto it, then choose **Copy** or **Move**.
-- **Approve Agent Items** groups copied items into simple checklists for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
+- **Approve Agent Items** is the right-side `MCPVAULT` area. Drag an item from the left list onto it, then choose **Copy** or **Move**.
+- Copied items are grouped into simple checklists for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
 - **Allowed For Agents** is the final allow list MCP clients can use.
 - **Profile Data For Agents** stores profile values agents may read directly, such as email, phone, address, name, or company.
 

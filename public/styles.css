@@ -171,95 +171,18 @@ h3 {
   display: none;
 }
 
-.vaultFlow {
-  display: grid;
-  grid-template-columns: minmax(190px, 1fr) 42px minmax(220px, 1fr);
-  gap: 12px;
-  align-items: stretch;
-  margin-bottom: 14px;
+.mcpPanel {
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
-.vaultCard {
-  min-height: 104px;
-  display: grid;
-  align-content: center;
-  gap: 6px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 16px;
-  background: #fbfcfe;
-  color: var(--text);
-  transition: border-color 140ms ease, background 140ms ease, transform 140ms ease, box-shadow 140ms ease;
-}
-
-.vaultCard strong {
-  font-size: 18px;
-  line-height: 1.2;
-}
-
-.vaultCard p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.vaultEyebrow {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 850;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.sourceVaultCard {
-  border-color: #c8d3df;
-}
-
-.agentVaultCard {
-  position: relative;
-  border-color: #98c9c3;
-  background: #f0faf8;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 1px rgba(20, 125, 115, 0.08);
-}
-
-.agentVaultCard::after {
-  content: "+";
-  position: absolute;
-  top: 14px;
-  right: 16px;
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 900;
-}
-
-.agentVaultCard:hover,
-.agentVaultCard:focus-visible,
-.agentVaultCard.dragOver {
+.mcpPanel.dragOver {
   border-color: var(--accent);
-  background: #e9f8f5;
-  box-shadow: 0 14px 30px rgba(20, 125, 115, 0.13), inset 0 0 0 1px rgba(20, 125, 115, 0.2);
-  outline: none;
-  transform: translateY(-1px);
+  background: #f0faf8;
+  box-shadow: 0 16px 34px rgba(20, 125, 115, 0.12);
 }
 
-.agentVaultCard.unavailable {
-  border-color: var(--line);
-  background: #fbfcfe;
-  box-shadow: none;
-}
-
-.vaultArrow {
-  display: grid;
-  place-items: center;
-  color: var(--accent-strong);
-  font-weight: 900;
-  font-size: 18px;
+.mcpPanel.unavailable {
+  background: var(--panel);
 }
 
 .searchGrid,
@@ -414,7 +337,7 @@ h3 {
   transform: scale(0.99);
 }
 
-.isDragging .agentVaultCard {
+.isDragging .mcpPanel {
   border-color: #6f8195;
 }
 
@@ -851,7 +774,6 @@ button.secondaryDanger:hover {
 @media (max-width: 980px) {
   .layout,
   .setupFlow,
-  .vaultFlow,
   .searchGrid,
   .approveGrid,
   .secretTypeGrid,
@@ -860,10 +782,6 @@ button.secondaryDanger:hover {
   .manualGrid,
   .profileGrid {
     grid-template-columns: 1fr;
-  }
-
-  .vaultArrow {
-    transform: rotate(90deg);
   }
 
   .item {

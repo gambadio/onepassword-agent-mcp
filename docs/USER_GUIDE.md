@@ -53,7 +53,7 @@ Use **Choose From 1Password**:
 1. Pick your source vault, such as `Private`.
 2. Pick a type filter, such as **API keys** or **Credit cards**, when you do not want a mixed list.
 3. Search by item name, website, category, or account label.
-4. Drag the item onto the **MCPVAULT** card.
+4. Drag the item from the left list onto the **Approve Agent Items** panel on the right.
 5. Choose **Copy** or **Move** in the small confirmation window.
 
 ![Drag to MCPVAULT](screenshots/drag-to-copy.svg)
@@ -61,6 +61,8 @@ Use **Choose From 1Password**:
 Use **Copy** first when you are unsure. Copy leaves the original item in the source vault and duplicates its fields into `MCPVAULT`.
 
 Use **Move** only when you want the item removed from the source vault. 1Password creates a new item in the destination vault, so the item ID changes.
+
+The source search shows up to 500 items by default. After a copy, the left list stays in place; after a move, the moved item is removed from the visible list without reloading the whole source vault.
 
 ## Step 3: Approve Agent Fields
 

@@ -108,7 +108,7 @@ Use **Choose From 1Password**:
 1. Select a source vault.
 2. Select a type filter when you want only logins, API keys, credit cards, notes, or other items.
 3. Search by item title, website, category, or account label.
-4. Drag an item onto the **MCPVAULT** card.
+4. Drag an item from the left list onto the **Approve Agent Items** panel on the right.
 5. Choose **Copy** or **Move** in the confirmation window.
 
 Copy is safest because the original item stays where it is. Move removes the item from the source vault and creates a new item in `MCPVAULT`.

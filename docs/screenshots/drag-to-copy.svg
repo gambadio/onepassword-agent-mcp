@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
   <title id="title">Drop an item onto MCPVAULT</title>
-  <desc id="desc">Example showing a source item being dragged directly onto the MCPVAULT card, followed by a Copy or Move choice.</desc>
+  <desc id="desc">Example showing a source item being dragged directly onto the right-side MCPVAULT approval panel, followed by a Copy or Move choice.</desc>
   <rect width="1120" height="560" fill="#f4f6f8"/>
   <rect x="32" y="32" width="1056" height="496" rx="10" fill="#ffffff" stroke="#d7dee8"/>
   <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Move items by dropping them on the vault</text>

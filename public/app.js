@@ -21,9 +21,7 @@ const mcpVaultNameLabel = document.querySelector("#mcpVaultNameLabel");
 const mcpVaultStatus = document.querySelector("#mcpVaultStatus");
 const createVaultBtn = document.querySelector("#createVaultBtn");
 const messageEl = document.querySelector("#message");
-const sourceVaultFlowName = document.querySelector("#sourceVaultFlowName");
 const mcpVaultDrop = document.querySelector("#mcpVaultDrop");
-const mcpVaultDropName = document.querySelector("#mcpVaultDropName");
 const transferDialog = document.querySelector("#transferDialog");
 const transferDialogText = document.querySelector("#transferDialogText");
 const transferCopyBtn = document.querySelector("#transferCopyBtn");
@@ -35,6 +33,7 @@ let mcpSearchTimer;
 let currentStatus;
 let currentGrants = [];
 let sourceCandidateMap = new Map();
+let lastSourceResult = null;
 let selectedCandidateId = "";
 let pendingTransferCandidate = null;
 let activeSecretGroup = "all";
@@ -48,13 +47,6 @@ mcpVaultDrop.addEventListener("dragover", onMcpVaultDragOver);
 mcpVaultDrop.addEventListener("dragenter", onMcpVaultDragEnter);
 mcpVaultDrop.addEventListener("dragleave", onMcpVaultDragLeave);
 mcpVaultDrop.addEventListener("drop", onMcpVaultDrop);
-mcpVaultDrop.addEventListener("click", () => runAction(openSelectedCandidateTransfer));
-mcpVaultDrop.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    runAction(openSelectedCandidateTransfer);
-  }
-});
 transferCopyBtn.addEventListener("click", () => runAction(() => runPendingTransfer("copy")));
 transferMoveBtn.addEventListener("click", () => runAction(() => runPendingTransfer("move")));
 transferCancelBtn.addEventListener("click", closeTransferDialog);
@@ -72,7 +64,6 @@ sourceSearchInput.addEventListener("input", () => {
   sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 350);
 });
 sourceVaultSelect.addEventListener("change", () => {
-  updateVaultFlowLabels();
   runAction(loadSourceCandidates);
 });
 sourceGroupSelect.addEventListener("change", () => runAction(loadSourceCandidates));
@@ -122,7 +113,6 @@ function renderStatus(status) {
   statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed.`;
 
   mcpVaultNameLabel.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
-  mcpVaultDropName.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
   createVaultBtn.textContent = `Create ${mcpVault.name || "MCPVAULT"}`;
   mcpVaultDrop.classList.toggle("unavailable", !mcpVault.exists);
   mcpVaultDrop.setAttribute("aria-disabled", String(!mcpVault.exists));
@@ -176,7 +166,6 @@ function renderVaultOptions(vaults, mcpVaultName) {
   } else if (sourceVaultSelect.options.length > 1) {
     sourceVaultSelect.selectedIndex = 1;
   }
-  updateVaultFlowLabels();
 }
 
 function renderGrants(grants) {
@@ -236,18 +225,20 @@ async function loadSourceCandidates() {
   sourceSummary.textContent = "";
   if (currentStatus?.cli?.authError) {
     sourceCandidatesEl.append(empty("1Password CLI cannot reach the desktop app. Open and unlock 1Password, then refresh."));
+    lastSourceResult = null;
     return;
   }
   const vault = sourceVaultSelect.value.trim();
   if (!vault) {
     sourceCandidatesEl.append(empty("Choose a source vault to search."));
+    lastSourceResult = null;
     return;
   }
   sourceCandidatesEl.append(empty("Searching 1Password..."));
 
   const params = new URLSearchParams({
     vault,
-    limit: sourceLimitInput.value || "100",
+    limit: sourceLimitInput.value || "500",
     mode: "primary",
     group: sourceGroupSelect.value || "all",
   });
@@ -260,6 +251,7 @@ async function loadSourceCandidates() {
 
 function renderSourceCandidates(result) {
   const candidates = result.items || [];
+  lastSourceResult = result;
   sourceCandidateMap = new Map();
   selectedCandidateId = "";
   sourceCandidatesEl.innerHTML = "";
@@ -322,7 +314,7 @@ function selectSourceCandidate(dragId) {
     item.classList.toggle("selected", item.dataset.dragId === dragId);
   }
   const candidate = sourceCandidateMap.get(dragId);
-  if (candidate) setMessage(`Selected ${candidate.itemTitle || candidate.title}. Drop it onto MCPVAULT, then choose Copy or Move.`);
+  if (candidate) setMessage(`Selected ${candidate.itemTitle || candidate.title}. Drop it on the right side, then choose Copy or Move.`);
 }
 
 async function openSelectedCandidateTransfer() {
@@ -369,8 +361,9 @@ async function transferCandidate(candidate, mode) {
   });
   activeSecretGroup = groupFromCategory(candidate.category);
   renderSecretGroupButtons();
-  await refresh();
-  await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
+  mcpSearchInput.value = "";
+  updateSourceAfterTransfer(candidate, mode);
+  await loadMcpCandidates();
   setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} into ${name}. Next, choose which details agents may use.`);
 }
 
@@ -402,9 +395,24 @@ function clearDropHighlights() {
   mcpVaultDrop.classList.remove("dragOver");
 }
 
-function updateVaultFlowLabels() {
-  const selected = selectedVaultLabel(sourceVaultSelect);
-  sourceVaultFlowName.textContent = selected || "Choose a source vault";
+function updateSourceAfterTransfer(candidate, mode) {
+  if (mode !== "move" || !lastSourceResult?.items?.length) {
+    return;
+  }
+  const before = lastSourceResult.items.length;
+  const items = lastSourceResult.items.filter((item) => {
+    if (candidate.itemId && item.itemId) return item.itemId !== candidate.itemId;
+    return item.token !== candidate.token;
+  });
+  const removed = before - items.length;
+  if (!removed) return;
+  renderSourceCandidates({
+    ...lastSourceResult,
+    items,
+    shown: Math.max(0, (lastSourceResult.shown || before) - removed),
+    matched: Math.max(0, (lastSourceResult.matched || before) - removed),
+    total: Math.max(0, (lastSourceResult.total || before) - removed),
+  });
 }
 
 async function loadMcpCandidates() {
@@ -424,7 +432,7 @@ async function loadMcpCandidates() {
 
   const params = new URLSearchParams({
     vault: mcpVault.name || name,
-    limit: mcpLimitInput.value || "100",
+    limit: mcpLimitInput.value || "500",
     mode: "all",
     group: activeSecretGroup,
   });
@@ -609,10 +617,16 @@ async function transferMcpItemToVault(group, destinationVault, mode) {
   });
   if (mode === "move") {
     expandedApprovalItems.delete(group.key);
+    await refreshGrantsOnly();
   }
-  await refresh();
-  await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
+  await loadMcpCandidates();
   setMessage(`${mode === "move" ? "Moved" : "Copied"} ${group.title} ${mode === "move" ? "to" : "into"} ${destination}.`);
+}
+
+async function refreshGrantsOnly() {
+  const grants = await api("/api/grants");
+  currentGrants = grants || [];
+  renderGrants(grants);
 }
 
 function renderSecretGroupButtons() {

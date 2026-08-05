@@ -62,19 +62,6 @@
           </div>
           <button id="loadSourceBtn" type="button">Search</button>
         </div>
-        <div class="vaultFlow" aria-label="Move items between vaults">
-          <div class="vaultCard sourceVaultCard">
-            <span class="vaultEyebrow">From your vault</span>
-            <strong id="sourceVaultFlowName">Choose a source vault</strong>
-            <p>Search results appear below. Drag one item at a time.</p>
-          </div>
-          <div class="vaultArrow" aria-hidden="true">-></div>
-          <div id="mcpVaultDrop" class="vaultCard agentVaultCard" role="button" tabindex="0" aria-label="Drop selected item into MCPVAULT">
-            <span class="vaultEyebrow">Drop here</span>
-            <strong id="mcpVaultDropName">MCPVAULT</strong>
-            <p>After you drop an item, choose Copy or Move.</p>
-          </div>
-        </div>
         <div class="searchGrid">
           <label>
             Source vault
@@ -97,18 +84,18 @@
           </label>
           <label>
             Limit
-            <input id="sourceLimitInput" type="number" min="1" max="500" value="100" />
+            <input id="sourceLimitInput" type="number" min="1" max="500" value="500" />
           </label>
         </div>
         <div id="sourceSummary" class="summaryLine"></div>
         <div id="sourceCandidates" class="list"></div>
       </section>
 
-      <section class="panel mcpPanel">
+      <section id="mcpVaultDrop" class="panel mcpPanel" aria-label="MCPVAULT agent item approval area">
         <div class="panelHeader">
           <div>
             <h2>Approve Agent Items</h2>
-            <p class="hint">Items copied into the agent vault are private until you choose the exact details agents may use.</p>
+            <p class="hint">Drop items here from the left. They stay private until you approve the exact details agents may use.</p>
           </div>
           <button id="loadMcpBtn" type="button">Refresh</button>
         </div>
@@ -159,7 +146,7 @@
           </label>
           <label>
             Limit
-            <input id="mcpLimitInput" type="number" min="1" max="500" value="100" />
+            <input id="mcpLimitInput" type="number" min="1" max="500" value="500" />
           </label>
         </div>
         <div id="mcpSummary" class="summaryLine"></div>
