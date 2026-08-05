@@ -1,5 +1,12 @@
 import { spawn } from "node:child_process";
-import type { Candidate, CandidatePayload, CandidateSearchResult, OpItemSummary, Settings } from "./types.js";
+import type {
+  Candidate,
+  CandidatePayload,
+  CandidateSearchResult,
+  OpItemSummary,
+  OpVaultSummary,
+  Settings,
+} from "./types.js";
 import { sealJson } from "./cryptoBox.js";
 import { formatSites } from "./siteMatch.js";
 
@@ -27,9 +34,55 @@ export class OpCli {
     }
   }
 
-  async listVaults(): Promise<Array<{ id?: string; name?: string; items?: number }>> {
+  async listVaults(): Promise<OpVaultSummary[]> {
     const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 30_000 });
-    return JSON.parse(result.stdout || "[]") as Array<{ id?: string; name?: string; items?: number }>;
+    return JSON.parse(result.stdout || "[]") as OpVaultSummary[];
+  }
+
+  async createVault(name: string): Promise<OpVaultSummary> {
+    const result = await this.run([
+      "vault",
+      "create",
+      name,
+      "--description",
+      "Vault used by 1Password Agent MCP for agent-approved login items.",
+    ], { timeoutMs: 45_000 });
+    const text = result.stdout.trim();
+    if (!text) return { name };
+    try {
+      const created = JSON.parse(text) as OpVaultSummary;
+      return { name, ...created };
+    } catch {
+      return { name };
+    }
+  }
+
+  async copyItemToVault(input: {
+    itemId: string;
+    currentVault: string;
+    destinationVault: string;
+  }): Promise<void> {
+    await this.pipeOp(
+      ["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"],
+      ["item", "create", "--vault", input.destinationVault, "-"],
+      90_000,
+    );
+  }
+
+  async moveItemToVault(input: {
+    itemId: string;
+    currentVault: string;
+    destinationVault: string;
+  }): Promise<void> {
+    await this.run([
+      "item",
+      "move",
+      input.itemId,
+      "--current-vault",
+      input.currentVault,
+      "--destination-vault",
+      input.destinationVault,
+    ], { timeoutMs: 60_000 });
   }
 
   async readSecret(secretRef: string): Promise<string> {
@@ -114,11 +167,7 @@ export class OpCli {
     const finalArgs = this.withGlobalArgs(args);
     const child = spawn(this.settings.opPath || "op", finalArgs, {
       stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        OP_FORMAT: "json",
-        OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
-      },
+      env: this.opEnv(),
     });
 
     if (options.input) {
@@ -163,6 +212,70 @@ export class OpCli {
     if (args.includes("--account")) return args;
     return ["--account", this.settings.account, ...args];
   }
+
+  private async pipeOp(sourceArgs: string[], destinationArgs: string[], timeoutMs: number): Promise<void> {
+    const source = spawn(this.settings.opPath || "op", this.withGlobalArgs(sourceArgs), {
+      stdio: ["ignore", "pipe", "pipe"],
+      env: this.opEnv(),
+    });
+    const destination = spawn(this.settings.opPath || "op", this.withGlobalArgs(destinationArgs), {
+      stdio: ["pipe", "ignore", "pipe"],
+      env: this.opEnv(),
+    });
+
+    source.stdout.pipe(destination.stdin);
+
+    let sourceStderr = "";
+    let destinationStderr = "";
+    source.stderr.setEncoding("utf8");
+    destination.stderr.setEncoding("utf8");
+    source.stderr.on("data", (chunk) => {
+      sourceStderr += chunk;
+    });
+    destination.stderr.on("data", (chunk) => {
+      destinationStderr += chunk;
+    });
+
+    const timeout = setTimeout(() => {
+      source.kill("SIGTERM");
+      destination.kill("SIGTERM");
+    }, timeoutMs);
+
+    await Promise.all([
+      waitForChild(source, "1Password item read", () => sourceStderr),
+      waitForChild(destination, "1Password item create", () => destinationStderr),
+    ]).finally(() => {
+      clearTimeout(timeout);
+    });
+  }
+
+  private opEnv(): NodeJS.ProcessEnv {
+    return {
+      ...process.env,
+      OP_FORMAT: "json",
+      OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
+    };
+  }
+}
+
+function waitForChild(
+  child: ReturnType<typeof spawn>,
+  label: string,
+  stderr: () => string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    child.on("error", (error) => {
+      reject(new Error(`${label} failed to start: ${error.message}`));
+    });
+    child.on("close", (code, signal) => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      const detail = stderr().trim() || `signal ${signal || "unknown"}`;
+      reject(new Error(`${label} failed (${code ?? "no code"}): ${detail}`));
+    });
+  });
 }
 
 function extractSites(item: OpItemSummary): string[] {

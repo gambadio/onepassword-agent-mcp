@@ -2,11 +2,12 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { loadOrCreateKey } from "./cryptoBox.js";
+import { loadOrCreateKey, openJson } from "./cryptoBox.js";
 import { OpCli } from "./opCli.js";
 import { publicDir } from "./paths.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
+import type { CandidatePayload, OpVaultSummary, PolicyFile } from "./types.js";
 
 const store = new StateStore();
 const policyService = new PolicyService(store);
@@ -18,6 +19,7 @@ export async function createAdminApp() {
 
   app.get("/api/status", async (_req, res) => {
     const file = await store.load();
+    const publicGrants = await policyService.listPublicGrants();
     const op = new OpCli(file.settings);
     let cli: Record<string, unknown>;
     try {
@@ -29,11 +31,13 @@ export async function createAdminApp() {
       } catch (error) {
         authError = (error as Error).message;
       }
+      const mcpVault = describeMcpVault(file, vaults);
       cli = {
         installed: true,
         authenticated: vaults.length > 0,
         version,
         vaults: vaults.map((vault) => ({ id: vault.id, name: vault.name, items: vault.items })),
+        mcpVault,
         authError,
       };
     } catch (error) {
@@ -46,8 +50,8 @@ export async function createAdminApp() {
     res.json({
       cli,
       settings: file.settings,
-      grants: file.grants.length,
-      enabledGrants: file.grants.filter((grant) => grant.enabled).length,
+      grants: publicGrants.length,
+      enabledGrants: publicGrants.filter((grant) => grant.enabled).length,
       audit: file.audit.slice(0, 30),
     });
   });
@@ -65,6 +69,7 @@ export async function createAdminApp() {
         opPath: stringValue(patch.opPath, file.settings.opPath),
         account: stringValue(patch.account, file.settings.account),
         defaultVault: stringValue(patch.defaultVault, file.settings.defaultVault),
+        mcpVaultName: stringValue(patch.mcpVaultName, file.settings.mcpVaultName),
         clipboardClearSeconds: numberValue(
           patch.clipboardClearSeconds,
           file.settings.clipboardClearSeconds,
@@ -104,6 +109,14 @@ export async function createAdminApp() {
   });
 
   app.post("/api/grants/import", async (req, res) => {
+    const file = await store.load();
+    const key = await loadOrCreateKey();
+    const candidate = openJson<CandidatePayload>(requireString(req.body.token, "token"), key);
+    const vaults = await new OpCli(file.settings).listVaults();
+    const mcpVault = describeMcpVault(file, vaults);
+    if (!candidateTargetsVault(candidate, mcpVault)) {
+      throw new Error(`Copy or move this item into ${file.settings.mcpVaultName} before approving it for agents.`);
+    }
     const grant = await policyService.createFromCandidate(requireString(req.body.token, "token"), {
       title: optionalString(req.body.title),
       username: optionalString(req.body.username),
@@ -142,6 +155,71 @@ export async function createAdminApp() {
       query: optionalString(req.query.q),
     });
     res.json(candidates);
+  });
+
+  app.post("/api/op/mcp-vault", async (_req, res) => {
+    const file = await store.load();
+    const op = new OpCli(file.settings);
+    const before = await op.listVaults();
+    const existing = findVault(before, file.settings.mcpVaultName);
+    if (existing) {
+      res.json({ created: false, vault: existing });
+      return;
+    }
+    const created = await op.createVault(file.settings.mcpVaultName);
+    const after = await op.listVaults().catch(() => before);
+    const vault = findVault(after, file.settings.mcpVaultName) || created;
+    await store.addAudit({
+      type: "vault.created",
+      message: `Created ${file.settings.mcpVaultName}.`,
+    });
+    res.status(201).json({ created: true, vault });
+  });
+
+  app.post("/api/op/transfer", async (req, res) => {
+    const mode = req.body.mode === "move" ? "move" : "copy";
+    const file = await store.load();
+    const key = await loadOrCreateKey();
+    const candidate = openJson<CandidatePayload>(requireString(req.body.token, "token"), key);
+    if (!candidate.itemId) {
+      throw new Error("This item cannot be transferred because 1Password did not return an item ID.");
+    }
+
+    const op = new OpCli(file.settings);
+    const vaults = await op.listVaults();
+    const mcpVault = describeMcpVault(file, vaults);
+    if (!mcpVault.exists) {
+      throw new Error(`Create ${file.settings.mcpVaultName} first.`);
+    }
+    if (candidateTargetsVault(candidate, mcpVault)) {
+      throw new Error(`This item is already in ${file.settings.mcpVaultName}.`);
+    }
+
+    const currentVault = candidate.vaultId || candidate.vaultName;
+    const destinationVault = mcpVault.id || mcpVault.name;
+    if (!currentVault || !destinationVault) {
+      throw new Error("1Password did not return enough vault information to transfer this item.");
+    }
+
+    if (mode === "move") {
+      await op.moveItemToVault({
+        itemId: candidate.itemId,
+        currentVault,
+        destinationVault,
+      });
+    } else {
+      await op.copyItemToVault({
+        itemId: candidate.itemId,
+        currentVault,
+        destinationVault,
+      });
+    }
+
+    await store.addAudit({
+      type: mode === "move" ? "item.moved" : "item.copied",
+      message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.title} into ${file.settings.mcpVaultName}.`,
+    });
+    res.status(201).json({ ok: true, mode });
   });
 
   app.use(express.static(publicDir()));
@@ -208,6 +286,42 @@ function requireSites(value: unknown): string[] {
   const sites = value.map(String).map((site) => site.trim()).filter(Boolean);
   if (!sites.length) throw new Error("At least one site is required.");
   return sites;
+}
+
+function describeMcpVault(file: PolicyFile, vaults: OpVaultSummary[]) {
+  const vault = findVault(vaults, file.settings.mcpVaultName);
+  return {
+    name: file.settings.mcpVaultName,
+    id: vault?.id,
+    items: vault?.items,
+    exists: Boolean(vault),
+  };
+}
+
+function findVault(vaults: OpVaultSummary[], nameOrId: string): OpVaultSummary | undefined {
+  const expected = normalizeVault(nameOrId);
+  return vaults.find((vault) => normalizeVault(vault.name) === expected || normalizeVault(vault.id) === expected);
+}
+
+function candidateTargetsVault(
+  candidate: CandidatePayload,
+  vault: { id?: string; name?: string; exists?: boolean },
+): boolean {
+  const expected = [vault.id, vault.name].map(normalizeVault).filter(Boolean);
+  return [candidate.vaultId, candidate.vaultName, extractVaultFromSecretRef(candidate.secretRef)]
+    .map(normalizeVault)
+    .filter(Boolean)
+    .some((value) => expected.includes(value));
+}
+
+function extractVaultFromSecretRef(secretRef: string): string | undefined {
+  if (!secretRef.startsWith("op://")) return undefined;
+  const [vault] = secretRef.slice("op://".length).split("/");
+  return vault ? decodeURIComponent(vault) : undefined;
+}
+
+function normalizeVault(value: string | undefined): string {
+  return (value || "").trim().toLowerCase();
 }
 
 async function publicGrant(id: string) {

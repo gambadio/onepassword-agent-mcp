@@ -8,7 +8,13 @@ export class PolicyService {
     }
     async listPublicGrants() {
         const [policy, key] = await Promise.all([this.store.load(), loadOrCreateKey()]);
-        return policy.grants.map((grant) => this.toPublicGrant(grant, key));
+        return policy.grants.flatMap((grant) => {
+            const saved = openJson(grant.encryptedRef, key);
+            if (!grantTargetsMcpVault(grant, policy.settings.mcpVaultName, saved.secretRef)) {
+                return [];
+            }
+            return [this.toPublicGrant(grant, key, saved)];
+        });
     }
     async findForSite(site) {
         const grants = await this.listPublicGrants();
@@ -107,6 +113,15 @@ export class PolicyService {
         if (savedRef.secretRef !== payload.secretRef || savedRef.kind !== payload.kind) {
             throw new Error("This password handle does not match the saved policy.");
         }
+        if (!grantTargetsMcpVault(grant, policy.settings.mcpVaultName, savedRef.secretRef)) {
+            await this.store.addAudit({
+                type: "secret.denied",
+                grantId: grant.id,
+                site: expectedSite,
+                message: `Denied paste for ${grant.title}: item is outside ${policy.settings.mcpVaultName}.`,
+            });
+            throw new Error(`This approval is outside ${policy.settings.mcpVaultName}.`);
+        }
         if (expectedSite) {
             if (!siteMatches(grant.sites, expectedSite)) {
                 await this.store.addAudit({
@@ -148,6 +163,10 @@ export class PolicyService {
         if (!input.sites.length) {
             throw new Error("At least one allowed site is required.");
         }
+        const policy = await this.store.load();
+        if (!grantTargetsMcpVault(input, policy.settings.mcpVaultName, input.secretRef)) {
+            throw new Error(`Only items in ${policy.settings.mcpVaultName} can be approved for agents.`);
+        }
         const key = await loadOrCreateKey();
         const id = randomId("grant");
         const now = new Date().toISOString();
@@ -187,11 +206,11 @@ export class PolicyService {
         });
         return grant;
     }
-    toPublicGrant(grant, key) {
-        const saved = openJson(grant.encryptedRef, key);
+    toPublicGrant(grant, key, saved) {
+        const savedRef = saved || openJson(grant.encryptedRef, key);
         const handle = sealJson({
             grantId: grant.id,
-            secretRef: saved.secretRef,
+            secretRef: savedRef.secretRef,
             kind: grant.kind,
             issuedAt: new Date().toISOString(),
         }, key);
@@ -212,5 +231,24 @@ export class PolicyService {
             note: grant.note,
         };
     }
+}
+function grantTargetsMcpVault(grant, mcpVaultName, secretRef) {
+    const expected = normalizeVault(mcpVaultName);
+    if (!expected)
+        return true;
+    return [
+        grant.vaultName,
+        grant.vaultId,
+        extractVaultFromSecretRef(secretRef),
+    ].some((vault) => normalizeVault(vault) === expected);
+}
+function extractVaultFromSecretRef(secretRef) {
+    if (!secretRef.startsWith("op://"))
+        return undefined;
+    const [vault] = secretRef.slice("op://".length).split("/");
+    return vault ? decodeURIComponent(vault) : undefined;
+}
+function normalizeVault(value) {
+    return (value || "").trim().toLowerCase();
 }
 //# sourceMappingURL=policy.js.map

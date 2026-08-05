@@ -25,16 +25,16 @@ Node.js must be version 20 or newer.
 2. Open **Settings > Developer**.
 3. Turn on **Integrate with 1Password CLI**.
 
-When your MCP client first asks for secrets, 1Password may show a prompt:
+When your MCP client first uses the CLI, 1Password may show a prompt:
 
 ![Authorize CLI access](screenshots/authorize-codex.svg)
 
 Click **Authorize** only for MCP clients you trust.
 
-## 3. Install The Bridge
+## 3. Install The MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.0.tar.gz
 ```
 
 Run:
@@ -73,7 +73,7 @@ For unsupported clients, print generic MCP JSON:
 onepassword-agent-mcp setup generic --json
 ```
 
-## 5. Start The Approval Console
+## 5. Start The Local Console
 
 ```bash
 onepassword-agent-mcp admin
@@ -87,20 +87,43 @@ http://127.0.0.1:7319
 
 The console should show `1Password CLI ready`.
 
-## 6. Search And Approve
+## 6. Create The Agent Vault
 
-![Approval console](screenshots/admin-ui.png)
+The default agent vault is:
 
-Use **Find Logins To Approve** to search your 1Password entries by:
+```text
+MCPVAULT
+```
 
-- item title
-- website
-- vault
-- account label
+If it does not exist, click **Create MCPVAULT** in the console.
 
-Click **Approve** only for entries your agents may use. Keep or edit the allowed-site list before approving.
+This creates an empty 1Password vault. It does not copy or approve anything yet.
 
-## 7. Test With An Agent
+## 7. Copy Or Move Logins Into MCPVAULT
+
+![Vault workbench](screenshots/mcpvault-workbench.svg)
+
+Use **Choose From 1Password**:
+
+1. Select a source vault.
+2. Search by item title, website, or account label.
+3. Drag a login to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+
+Copy is safest because the original item stays where it is. Move removes the item from the source vault and creates a new item in `MCPVAULT`.
+
+## 8. Approve Sites
+
+![Approve sites](screenshots/approve-sites.svg)
+
+Use **Approve Agent Items**:
+
+1. Find the copied or moved login in `MCPVAULT`.
+2. Enter allowed sites, such as `github.com, *.github.com`.
+3. Click **Approve**.
+
+Approved entries appear under **Allowed For Agents**. Agents can use only enabled approvals.
+
+## 9. Test With An Agent
 
 Ask the agent to:
 
@@ -113,10 +136,10 @@ The agent should not receive the plaintext password.
 
 ## Update
 
-Install the latest version from GitHub again:
+Install the latest tagged version again:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.0.tar.gz
 ```
 
 Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling the package.

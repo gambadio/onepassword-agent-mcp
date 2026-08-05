@@ -14,7 +14,7 @@ function jsonResponse(value) {
 export function createMcpServer() {
     const server = new McpServer({
         name: "onepassword-agent-mcp",
-        version: "0.1.0",
+        version: "0.2.0",
     });
     const policy = new PolicyService();
     const store = new StateStore();
@@ -25,22 +25,29 @@ export function createMcpServer() {
     }, async () => {
         const file = await store.load();
         const op = new OpCli(file.settings);
+        const grants = await policy.listPublicGrants();
         let cli;
         try {
             const version = await op.version();
-            let vaults = [];
+            let mcpVaultVisible = false;
+            let authenticated = false;
             let authError = null;
             try {
-                vaults = await op.listVaults();
+                const vaults = await op.listVaults();
+                authenticated = true;
+                const expected = file.settings.mcpVaultName.trim().toLowerCase();
+                mcpVaultVisible = vaults.some((vault) => {
+                    return vault.name?.trim().toLowerCase() === expected || vault.id?.trim().toLowerCase() === expected;
+                });
             }
             catch (error) {
                 authError = error.message;
             }
             cli = {
                 installed: true,
-                authenticated: vaults.length > 0,
+                authenticated,
                 version,
-                vaults: vaults.map((vault) => ({ id: vault.id, name: vault.name, items: vault.items })),
+                mcpVaultVisible,
                 authError,
             };
         }
@@ -48,10 +55,11 @@ export function createMcpServer() {
             cli = { installed: false, authenticated: false, error: error.message };
         }
         return jsonResponse({
-            grants: file.grants.length,
-            enabledGrants: file.grants.filter((grant) => grant.enabled).length,
+            grants: grants.length,
+            enabledGrants: grants.filter((grant) => grant.enabled).length,
             settings: {
                 account: file.settings.account || null,
+                mcpVaultName: file.settings.mcpVaultName,
                 allowPasteWithoutSite: file.settings.allowPasteWithoutSite,
                 clipboardClearSeconds: file.settings.clipboardClearSeconds,
             },

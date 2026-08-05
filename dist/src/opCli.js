@@ -26,6 +26,39 @@ export class OpCli {
         const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 30_000 });
         return JSON.parse(result.stdout || "[]");
     }
+    async createVault(name) {
+        const result = await this.run([
+            "vault",
+            "create",
+            name,
+            "--description",
+            "Vault used by 1Password Agent MCP for agent-approved login items.",
+        ], { timeoutMs: 45_000 });
+        const text = result.stdout.trim();
+        if (!text)
+            return { name };
+        try {
+            const created = JSON.parse(text);
+            return { name, ...created };
+        }
+        catch {
+            return { name };
+        }
+    }
+    async copyItemToVault(input) {
+        await this.pipeOp(["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"], ["item", "create", "--vault", input.destinationVault, "-"], 90_000);
+    }
+    async moveItemToVault(input) {
+        await this.run([
+            "item",
+            "move",
+            input.itemId,
+            "--current-vault",
+            input.currentVault,
+            "--destination-vault",
+            input.destinationVault,
+        ], { timeoutMs: 60_000 });
+    }
     async readSecret(secretRef) {
         const result = await this.run(["read", "--no-newline", secretRef], { timeoutMs: 30_000 });
         return result.stdout;
@@ -96,11 +129,7 @@ export class OpCli {
         const finalArgs = this.withGlobalArgs(args);
         const child = spawn(this.settings.opPath || "op", finalArgs, {
             stdio: ["pipe", "pipe", "pipe"],
-            env: {
-                ...process.env,
-                OP_FORMAT: "json",
-                OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
-            },
+            env: this.opEnv(),
         });
         if (options.input) {
             child.stdin.write(options.input);
@@ -142,6 +171,59 @@ export class OpCli {
             return args;
         return ["--account", this.settings.account, ...args];
     }
+    async pipeOp(sourceArgs, destinationArgs, timeoutMs) {
+        const source = spawn(this.settings.opPath || "op", this.withGlobalArgs(sourceArgs), {
+            stdio: ["ignore", "pipe", "pipe"],
+            env: this.opEnv(),
+        });
+        const destination = spawn(this.settings.opPath || "op", this.withGlobalArgs(destinationArgs), {
+            stdio: ["pipe", "ignore", "pipe"],
+            env: this.opEnv(),
+        });
+        source.stdout.pipe(destination.stdin);
+        let sourceStderr = "";
+        let destinationStderr = "";
+        source.stderr.setEncoding("utf8");
+        destination.stderr.setEncoding("utf8");
+        source.stderr.on("data", (chunk) => {
+            sourceStderr += chunk;
+        });
+        destination.stderr.on("data", (chunk) => {
+            destinationStderr += chunk;
+        });
+        const timeout = setTimeout(() => {
+            source.kill("SIGTERM");
+            destination.kill("SIGTERM");
+        }, timeoutMs);
+        await Promise.all([
+            waitForChild(source, "1Password item read", () => sourceStderr),
+            waitForChild(destination, "1Password item create", () => destinationStderr),
+        ]).finally(() => {
+            clearTimeout(timeout);
+        });
+    }
+    opEnv() {
+        return {
+            ...process.env,
+            OP_FORMAT: "json",
+            OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
+        };
+    }
+}
+function waitForChild(child, label, stderr) {
+    return new Promise((resolve, reject) => {
+        child.on("error", (error) => {
+            reject(new Error(`${label} failed to start: ${error.message}`));
+        });
+        child.on("close", (code, signal) => {
+            if (code === 0) {
+                resolve();
+                return;
+            }
+            const detail = stderr().trim() || `signal ${signal || "unknown"}`;
+            reject(new Error(`${label} failed (${code ?? "no code"}): ${detail}`));
+        });
+    });
 }
 function extractSites(item) {
     const raw = [

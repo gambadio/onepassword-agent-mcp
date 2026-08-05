@@ -4,37 +4,53 @@
 
 # 1Password Agent MCP
 
-Local MCP access to approved 1Password items for AI agents.
+Local MCP access to approved 1Password logins for AI agents.
 
-The agent can ask for an approved login, receive an encrypted opaque handle, and paste the password into the active app or browser. The model does not receive the plaintext password. The real secret is resolved locally through the 1Password CLI only at copy or paste time.
+Agents receive encrypted local handles, not plaintext passwords. At the moment of copy or paste, the MCP resolves the secret locally through the 1Password CLI and sends it to the OS clipboard or active app.
 
-The repo does not contain any user's 1Password data. Each install connects to that user's own local 1Password CLI and local approval policy.
+The repo contains no personal 1Password data. Every install connects to that user's own 1Password CLI and local approval policy.
 
 > Not affiliated with or endorsed by 1Password.
 
-![Approval console](docs/screenshots/admin-ui.png)
+![Vault workbench](docs/screenshots/mcpvault-workbench.svg)
+
+## How It Works
+
+1. Create a dedicated 1Password vault named `MCPVAULT`.
+2. Copy or move selected logins from your normal vaults into `MCPVAULT`.
+3. Approve each `MCPVAULT` login for specific websites.
+4. Connect Claude Code, Codex, GitHub Copilot, or another MCP client.
+5. The agent can paste approved passwords without seeing the plaintext.
+
+The MCP tools only expose approved items from the configured agent vault.
 
 ## Quick Start
 
-Install 1Password Agent MCP from this public GitHub repo:
+Install from GitHub:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.0.tar.gz
 ```
 
-Check your local setup:
+Or install from the latest `main` branch:
+
+```bash
+npm install -g github:gambadio/onepassword-agent-mcp
+```
+
+Check your setup:
 
 ```bash
 onepassword-agent-mcp doctor
 ```
 
-Configure the MCP clients you already have installed:
+Connect installed MCP clients:
 
 ```bash
 onepassword-agent-mcp setup all --apply
 ```
 
-Start the local approval console:
+Start the local console:
 
 ```bash
 onepassword-agent-mcp admin
@@ -46,7 +62,7 @@ Open:
 http://127.0.0.1:7319
 ```
 
-Search your 1Password items, approve only the entries your agents may use, and restrict each approval to the websites where it is allowed.
+Full walkthrough: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 
 ## Requirements
 
@@ -70,31 +86,19 @@ Enable the 1Password desktop integration:
 
 ![Authorize CLI access](docs/screenshots/authorize-codex.svg)
 
-## What Gets Installed
+## The Local Console
 
-The package installs one main command:
+The console is a small workbench:
 
-```bash
-onepassword-agent-mcp
-```
+- **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
+- **Vault Workbench** lets you drag a source login into the agent vault.
+- **Choose From 1Password** searches your normal vaults.
+- **Approve Agent Items** shows only items already in `MCPVAULT`.
+- **Allowed For Agents** is the final allow list MCP clients can use.
 
-Useful subcommands:
+![Drag to copy](docs/screenshots/drag-to-copy.svg)
 
-```bash
-onepassword-agent-mcp admin        # start the local approval console
-onepassword-agent-mcp mcp          # start the stdio MCP server
-onepassword-agent-mcp doctor       # check Node, op, auth, state, and admin UI
-onepassword-agent-mcp setup all    # print client setup commands
-onepassword-agent-mcp setup all --apply
-```
-
-MCP clients should run this server command:
-
-```bash
-onepassword-agent-mcp mcp
-```
-
-You normally do not run `mcp` yourself. Claude Code, Codex, Copilot, or another MCP client starts it when needed.
+Copy is the safe default. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
 
 ## Client Setup
 
@@ -104,7 +108,7 @@ The setup CLI prints a dry run by default:
 onepassword-agent-mcp setup all
 ```
 
-Apply the setup automatically where a supported CLI is installed:
+Apply setup automatically where a supported CLI is installed:
 
 ```bash
 onepassword-agent-mcp setup all --apply
@@ -120,12 +124,6 @@ Equivalent command:
 
 ```bash
 claude mcp add --scope user onepassword-agent-mcp -- onepassword-agent-mcp mcp
-```
-
-Use another Claude Code scope when you want project-local config instead:
-
-```bash
-onepassword-agent-mcp setup claude-code --apply --scope local
 ```
 
 ### Codex
@@ -152,7 +150,7 @@ Equivalent VS Code command:
 code --add-mcp '{"name":"onepassword-agent-mcp","command":"onepassword-agent-mcp","args":["mcp"]}'
 ```
 
-If the `code` command is not in your `PATH`, create `.vscode/mcp.json` in your workspace:
+Workspace fallback at `.vscode/mcp.json`:
 
 ```json
 {
@@ -187,72 +185,37 @@ Generic config:
 }
 ```
 
-## Approving Logins
+## MCP Tools
 
-1. Run `onepassword-agent-mcp admin`.
-2. Open `http://127.0.0.1:7319`.
-3. Use **Find Logins To Approve**.
-4. Search by title, website, vault, or account label.
-5. Click **Approve** only for entries your agents may use.
-6. Keep or edit the allowed sites before approval.
-
-Approved entries appear under **Allowed For Agents**. Agents only receive handles for enabled approvals, and allowed-site checks run again at copy and paste time.
-
-### What Is "Advanced: add a copied secret reference"?
-
-Most users should ignore it.
-
-Use it only when the importer cannot infer the right field, for example a custom token or non-standard field. In 1Password, copy a secret reference such as:
-
-```text
-op://ExampleVault/ExampleLogin/password
-```
-
-Paste that reference into the advanced form. The local policy stores the reference encrypted. It still does not store the actual password.
-
-### What Are "Local Settings"?
-
-Usually you can leave these alone.
-
-- `1Password CLI path`: where the `op` binary lives. Default: `op`.
-- `Account`: optional 1Password account selector.
-- `Default vault`: optional vault to search first.
-- `Clipboard clear seconds`: how quickly copied secrets are cleared.
-- `Allow paste without expected site`: off by default. Keep it off unless you know why you need it.
-
-## How Agents Use It
-
-```mermaid
-flowchart LR
-  User["You approve a login"] --> Policy["Local allow list"]
-  Agent["MCP agent"] --> Lookup["find_passwords_for_site"]
-  Lookup --> Handle["Encrypted handle"]
-  Handle --> Paste["copy_password or paste_password"]
-  Paste --> Op["1Password CLI resolves secret locally"]
-  Op --> App["Clipboard or active app"]
-```
-
-The model may see a handle like:
-
-```text
-opmcp:v1:...
-```
-
-It should not see:
-
-```text
-your-real-password
-```
-
-Available MCP tools:
-
-- `onepassword_status`: check CLI and local policy status.
+- `onepassword_status`: check CLI, `MCPVAULT`, and local policy status.
 - `find_passwords_for_site`: return approved encrypted handles for a website.
 - `list_approved_passwords`: list approved handles and allowed sites.
 - `copy_password`: resolve a handle and copy the password to the clipboard.
 - `paste_password`: resolve a handle, copy it, paste into the active app, and return no plaintext.
 - `clear_password_clipboard`: clear the clipboard.
 - `admin_ui_info`: return the approval console URL.
+
+## Security Model
+
+Protected:
+
+- Passwords are not stored by this project.
+- MCP tools never return plaintext passwords.
+- Handles and stored 1Password secret references are encrypted locally.
+- Disabled or deleted approvals invalidate old handles.
+- Allowed-site checks run again at copy and paste time.
+- The MCP server only lists and resolves approvals from the configured agent vault.
+
+Still sensitive:
+
+- The OS clipboard briefly contains the plaintext password.
+- The active app receives the password when paste is triggered.
+- A local process with clipboard access may observe copied secrets.
+- With desktop CLI integration, the local 1Password CLI session may have broader vault access than the MCP exposes.
+
+For the strictest boundary, use a 1Password service account scoped only to `MCPVAULT`.
+
+Read [docs/SECURITY.md](docs/SECURITY.md) before using this with powerful browser-control agents.
 
 ## Local State
 
@@ -269,6 +232,12 @@ Use a different state directory:
 ONEPASSWORD_MCP_HOME=/path/to/state onepassword-agent-mcp admin
 ```
 
+Use a different agent vault name:
+
+```bash
+MCP_VAULT_NAME=AgentVault onepassword-agent-mcp admin
+```
+
 Headless service-account example:
 
 ```json
@@ -278,7 +247,8 @@ Headless service-account example:
       "command": "onepassword-agent-mcp",
       "args": ["mcp"],
       "env": {
-        "OP_SERVICE_ACCOUNT_TOKEN": "ops_..."
+        "OP_SERVICE_ACCOUNT_TOKEN": "ops_...",
+        "MCP_VAULT_NAME": "MCPVAULT"
       }
     }
   }
@@ -286,25 +256,6 @@ Headless service-account example:
 ```
 
 Do not commit service account tokens.
-
-## Security Model
-
-Protected:
-
-- Passwords are not stored by this project.
-- MCP tools never return plaintext passwords.
-- Handles and stored 1Password secret references are encrypted locally.
-- Disabled or deleted approvals invalidate old handles.
-- Allowed-site checks happen again at copy and paste time.
-
-Still sensitive:
-
-- The OS clipboard briefly contains the plaintext password.
-- The active app receives the password when paste is triggered.
-- A local process with clipboard access may observe copied secrets.
-- Any approved agent can use approved entries within the allowed-site policy.
-
-Read [docs/SECURITY.md](docs/SECURITY.md) before using this with powerful browser-control agents.
 
 ## Troubleshooting
 
@@ -318,8 +269,8 @@ Common fixes:
 
 - `op` missing: install the 1Password CLI.
 - 1Password auth failure: enable desktop CLI integration or set `OP_SERVICE_ACCOUNT_TOKEN`.
+- `MCPVAULT` missing: start the admin console and click **Create MCPVAULT**.
 - Copilot setup cannot find `code`: install the VS Code shell command or use `.vscode/mcp.json`.
-- Existing MCP entry conflicts: remove the old entry in that client, then run setup again.
 - Admin UI not running: run `onepassword-agent-mcp admin`.
 
 ## Development

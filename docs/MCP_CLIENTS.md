@@ -11,7 +11,7 @@ The CLI can configure common clients for you.
 ## Install 1Password Agent MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.1.0.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.0.tar.gz
 ```
 
 ## Claude Code
@@ -100,7 +100,8 @@ For headless environments, scope a 1Password service account token to the smalle
       "command": "onepassword-agent-mcp",
       "args": ["mcp"],
       "env": {
-        "OP_SERVICE_ACCOUNT_TOKEN": "ops_..."
+        "OP_SERVICE_ACCOUNT_TOKEN": "ops_...",
+        "MCP_VAULT_NAME": "MCPVAULT"
       }
     }
   }
@@ -108,6 +109,8 @@ For headless environments, scope a 1Password service account token to the smalle
 ```
 
 Do not commit service account tokens.
+
+For the strictest boundary, grant the service account access only to `MCPVAULT`.
 
 ## Useful Admin Command
 

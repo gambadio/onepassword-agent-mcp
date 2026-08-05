@@ -1,4 +1,4 @@
-import type { CandidateSearchResult, Settings } from "./types.js";
+import type { CandidateSearchResult, OpVaultSummary, Settings } from "./types.js";
 interface RunResult {
     stdout: string;
     stderr: string;
@@ -8,11 +8,18 @@ export declare class OpCli {
     constructor(settings: Settings);
     version(): Promise<string>;
     whoami(): Promise<unknown>;
-    listVaults(): Promise<Array<{
-        id?: string;
-        name?: string;
-        items?: number;
-    }>>;
+    listVaults(): Promise<OpVaultSummary[]>;
+    createVault(name: string): Promise<OpVaultSummary>;
+    copyItemToVault(input: {
+        itemId: string;
+        currentVault: string;
+        destinationVault: string;
+    }): Promise<void>;
+    moveItemToVault(input: {
+        itemId: string;
+        currentVault: string;
+        destinationVault: string;
+    }): Promise<void>;
     readSecret(secretRef: string): Promise<string>;
     listCandidates(options: {
         vault?: string;
@@ -26,5 +33,7 @@ export declare class OpCli {
         input?: string;
     }): Promise<RunResult>;
     private withGlobalArgs;
+    private pipeOp;
+    private opEnv;
 }
 export {};

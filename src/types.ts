@@ -9,6 +9,7 @@ export interface Settings {
   autoPasteByDefault: boolean;
   allowPasteWithoutSite: boolean;
   defaultVault: string;
+  mcpVaultName: string;
 }
 
 export interface Grant {
@@ -39,7 +40,10 @@ export interface AuditEvent {
     | "secret.copied"
     | "secret.pasted"
     | "secret.denied"
-    | "settings.updated";
+    | "settings.updated"
+    | "vault.created"
+    | "item.copied"
+    | "item.moved";
   grantId?: string;
   site?: string;
   message: string;
@@ -122,4 +126,10 @@ export interface OpItemSummary {
   urls?: Array<{ href?: string; primary?: boolean; label?: string }>;
   url?: string;
   category?: string;
+}
+
+export interface OpVaultSummary {
+  id?: string;
+  name?: string;
+  items?: number;
 }

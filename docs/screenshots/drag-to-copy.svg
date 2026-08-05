@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+  <title id="title">Drag a login into MCPVAULT</title>
+  <desc id="desc">Example showing a source login being dragged to the Copy Into MCPVAULT drop target.</desc>
+  <rect width="1120" height="560" fill="#f4f6f8"/>
+  <rect x="32" y="32" width="1056" height="496" rx="10" fill="#ffffff" stroke="#d7dee8"/>
+  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Copy without exposing the password</text>
+  <text x="56" y="96" fill="#627084" font-family="Arial, sans-serif" font-size="14">Drag from a normal vault. Drop on Copy to leave the original item untouched.</text>
+
+  <rect x="56" y="136" width="438" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+  <text x="78" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Source Vault: Private</text>
+  <g transform="translate(78 202)">
+    <rect width="394" height="82" rx="8" fill="#ffffff" stroke="#94bdb8"/>
+    <text x="18" y="29" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">GitHub Work Login</text>
+    <text x="18" y="53" fill="#627084" font-family="Arial, sans-serif" font-size="12">site: github.com | field: password</text>
+  </g>
+  <g transform="translate(96 320)">
+    <rect width="394" height="82" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="18" y="29" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">Stripe Demo Account</text>
+    <text x="18" y="53" fill="#627084" font-family="Arial, sans-serif" font-size="12">site: stripe.com | field: password</text>
+  </g>
+
+  <path d="M501 244 C602 204 630 204 715 244" fill="none" stroke="#147d73" stroke-width="4" stroke-linecap="round"/>
+  <path d="M714 244 l-20 -8 l7 20 z" fill="#147d73"/>
+  <rect x="560" y="178" width="210" height="68" rx="8" fill="#f2fbf9" stroke="#147d73"/>
+  <text x="665" y="207" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="14" font-weight="700">dragging...</text>
+  <text x="665" y="228" text-anchor="middle" fill="#627084" font-family="Arial, sans-serif" font-size="12">encrypted local handle only</text>
+
+  <rect x="626" y="136" width="438" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+  <text x="648" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Agent Vault: MCPVAULT</text>
+  <rect x="648" y="202" width="394" height="96" rx="8" fill="#f0faf8" stroke="#147d73" stroke-width="2"/>
+  <text x="845" y="239" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="17" font-weight="700">Copy Into MCPVAULT</text>
+  <text x="845" y="264" text-anchor="middle" fill="#627084" font-family="Arial, sans-serif" font-size="12">Original stays in Private.</text>
+  <rect x="648" y="322" width="394" height="96" rx="8" fill="#ffffff" stroke="#aab7c7" stroke-dasharray="7 6"/>
+  <text x="845" y="359" text-anchor="middle" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Move Into MCPVAULT</text>
+  <text x="845" y="384" text-anchor="middle" fill="#627084" font-family="Arial, sans-serif" font-size="12">Requires confirmation.</text>
+</svg>

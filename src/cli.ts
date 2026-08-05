@@ -141,6 +141,15 @@ async function doctor(): Promise<void> {
     try {
       const vaults = await op.listVaults();
       ok(`1Password auth: ${vaults.length} vault(s) visible`);
+      const expected = file.settings.mcpVaultName.trim().toLowerCase();
+      const mcpVault = vaults.find((vault) => {
+        return vault.name?.trim().toLowerCase() === expected || vault.id?.trim().toLowerCase() === expected;
+      });
+      if (mcpVault) {
+        ok(`Agent vault: ${file.settings.mcpVaultName}`);
+      } else {
+        warn(`Agent vault ${file.settings.mcpVaultName} does not exist yet. Create it in the admin UI.`);
+      }
     } catch (error) {
       failures += 1;
       fail(`1Password auth: ${(error as Error).message}`);

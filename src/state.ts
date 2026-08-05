@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: Settings = {
   autoPasteByDefault: true,
   allowPasteWithoutSite: false,
   defaultVault: "",
+  mcpVaultName: process.env.MCP_VAULT_NAME || "MCPVAULT",
 };
 
 export class StateStore {

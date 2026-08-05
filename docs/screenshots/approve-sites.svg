@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
+  <title id="title">Approve sites for an MCPVAULT login</title>
+  <desc id="desc">Example showing a login in MCPVAULT being approved for specific websites.</desc>
+  <rect width="1120" height="560" fill="#f4f6f8"/>
+  <rect x="32" y="32" width="1056" height="496" rx="10" fill="#ffffff" stroke="#d7dee8"/>
+  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Approve only the sites an agent may use</text>
+  <text x="56" y="96" fill="#627084" font-family="Arial, sans-serif" font-size="14">The MCP checks the expected site again before copying or pasting.</text>
+
+  <rect x="56" y="136" width="492" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+  <text x="78" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Approve Agent Items</text>
+  <rect x="78" y="194" width="320" height="36" rx="6" fill="#ffffff" stroke="#d7dee8"/>
+  <text x="92" y="217" fill="#627084" font-family="Arial, sans-serif" font-size="13">github</text>
+  <rect x="414" y="194" width="92" height="36" rx="6" fill="#147d73"/>
+  <text x="460" y="217" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Refresh</text>
+  <g transform="translate(78 258)">
+    <rect width="428" height="142" rx="8" fill="#ffffff" stroke="#94bdb8"/>
+    <text x="18" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">GitHub Work Login</text>
+    <text x="18" y="54" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | field: password</text>
+    <text x="18" y="85" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Allowed sites</text>
+    <rect x="18" y="96" width="284" height="34" rx="6" fill="#ffffff" stroke="#147d73"/>
+    <text x="32" y="118" fill="#1e2633" font-family="Arial, sans-serif" font-size="13">github.com, *.github.com</text>
+    <rect x="316" y="96" width="92" height="34" rx="6" fill="#147d73"/>
+    <text x="362" y="118" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Approve</text>
+  </g>
+
+  <rect x="572" y="136" width="492" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+  <text x="594" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Allowed For Agents</text>
+  <rect x="944" y="150" width="76" height="26" rx="13" fill="#eef5f4"/>
+  <text x="982" y="168" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="12" font-weight="700">1 total</text>
+  <g transform="translate(594 208)">
+    <rect width="428" height="142" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="18" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">GitHub Work Login</text>
+    <text x="18" y="54" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | field: password</text>
+    <text x="18" y="85" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Allowed sites</text>
+    <rect x="18" y="96" width="266" height="34" rx="6" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="32" y="118" fill="#1e2633" font-family="Arial, sans-serif" font-size="13">github.com, *.github.com</text>
+    <rect x="298" y="96" width="62" height="34" rx="6" fill="#ffffff" stroke="#147d73"/>
+    <text x="329" y="118" text-anchor="middle" fill="#147d73" font-family="Arial, sans-serif" font-size="13" font-weight="700">Save</text>
+    <rect x="370" y="96" width="38" height="34" rx="6" fill="#ffffff" stroke="#b42318"/>
+    <text x="389" y="118" text-anchor="middle" fill="#b42318" font-family="Arial, sans-serif" font-size="13" font-weight="700">Del</text>
+  </g>
+  <path d="M532 326 h54" stroke="#147d73" stroke-width="4" stroke-linecap="round"/>
+  <path d="M586 326 l-18 -10 v20 z" fill="#147d73"/>
+</svg>

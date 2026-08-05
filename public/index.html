@@ -20,47 +20,122 @@
     </header>
 
     <main class="layout">
-      <section class="panel allowedPanel">
+      <section class="panel wide setupPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Agent Vault Setup</h2>
+            <p class="hint">Agents only use enabled items from <strong id="mcpVaultNameLabel">MCPVAULT</strong>.</p>
+          </div>
+          <button id="createVaultBtn" type="button">Create MCPVAULT</button>
+        </div>
+        <div class="setupFlow">
+          <div class="step">
+            <span class="stepNumber">1</span>
+            <div>
+              <h3>Use a dedicated agent vault</h3>
+              <p id="mcpVaultStatus" class="meta">Checking vault status...</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="stepNumber">2</span>
+            <div>
+              <h3>Copy logins into that vault</h3>
+              <p class="meta">Copy keeps the original item in place. Move removes it from the source vault.</p>
+            </div>
+          </div>
+          <div class="step">
+            <span class="stepNumber">3</span>
+            <div>
+              <h3>Approve sites for agents</h3>
+              <p class="meta">The MCP gives agents encrypted handles, then resolves the password locally only at copy or paste time.</p>
+            </div>
+          </div>
+        </div>
+        <div id="message" class="message" role="status" hidden></div>
+      </section>
+
+      <section class="panel wide vaultBoard">
+        <div class="panelHeader">
+          <div>
+            <h2>Vault Workbench</h2>
+            <p class="hint">Drag a login from the source vault into the agent vault, then approve where agents may use it.</p>
+          </div>
+        </div>
+        <div class="dropTargets">
+          <div class="dropTarget primaryDrop" data-drop-mode="copy" role="button" tabindex="0">
+            <span>Copy Into MCPVAULT</span>
+            <p>Leaves the original login in its current vault.</p>
+          </div>
+          <div class="dropTarget" data-drop-mode="move" role="button" tabindex="0">
+            <span>Move Into MCPVAULT</span>
+            <p>Moves the login out of the source vault after confirmation.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel sourcePanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Choose From 1Password</h2>
+            <p class="hint">Search your normal vaults, then copy selected items into the agent vault.</p>
+          </div>
+          <button id="loadSourceBtn" type="button">Search</button>
+        </div>
+        <div class="searchGrid">
+          <label>
+            Source vault
+            <select id="sourceVaultSelect"></select>
+          </label>
+          <label>
+            Search
+            <input id="sourceSearchInput" autocomplete="off" placeholder="github, google.com, work email" />
+          </label>
+          <label>
+            Limit
+            <input id="sourceLimitInput" type="number" min="1" max="500" value="100" />
+          </label>
+        </div>
+        <div id="sourceSummary" class="summaryLine"></div>
+        <div id="sourceCandidates" class="list"></div>
+      </section>
+
+      <section class="panel mcpPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Approve Agent Items</h2>
+            <p class="hint">Only items already inside the agent vault can be approved for MCP use.</p>
+          </div>
+          <button id="loadMcpBtn" type="button">Refresh</button>
+        </div>
+        <div class="approveGrid">
+          <label>
+            Search agent vault
+            <input id="mcpSearchInput" autocomplete="off" placeholder="github.com, login name, account" />
+          </label>
+          <label>
+            Limit
+            <input id="mcpLimitInput" type="number" min="1" max="500" value="100" />
+          </label>
+        </div>
+        <div id="mcpSummary" class="summaryLine"></div>
+        <div id="mcpCandidates" class="list"></div>
+      </section>
+
+      <section class="panel wide allowedPanel">
         <div class="panelHeader">
           <div>
             <h2>Allowed For Agents</h2>
-            <p class="hint">Approved entries become encrypted MCP handles. Plaintext is only resolved during copy or paste.</p>
+            <p class="hint">Enabled entries are the only password handles MCP clients can request.</p>
           </div>
           <span id="grantCount" class="pill"></span>
         </div>
-        <div id="grants" class="list"></div>
-      </section>
-
-      <section class="panel importPanel">
-        <div class="panelHeader">
-          <div>
-            <h2>Find Logins To Approve</h2>
-            <p class="hint">Search by item name, website, vault, or account label.</p>
-          </div>
-          <button id="loadCandidatesBtn" type="button">Search</button>
-        </div>
-        <div class="importControls">
-          <label class="grow">
-            Search
-            <input id="candidateSearchInput" autocomplete="off" placeholder="github, google.com, work email" />
-          </label>
-          <label>
-            Vault
-            <input id="vaultInput" list="vaultOptions" placeholder="Any vault" />
-            <datalist id="vaultOptions"></datalist>
-          </label>
-          <label class="limitField">
-            Limit
-            <input id="limitInput" type="number" min="1" max="500" value="100" />
-          </label>
-        </div>
-        <div id="candidateSummary" class="summaryLine"></div>
-        <div id="candidates" class="list"></div>
+        <div id="grants" class="list grantList"></div>
       </section>
 
       <section class="panel wide">
         <details>
-          <summary>Advanced: add a copied secret reference</summary>
+          <summary>Expert fallback: add a secret reference manually</summary>
+          <p class="hint detailsHint">Use this only for a custom field already inside the agent vault, such as an API token field that search does not show.</p>
           <form id="manualForm" class="manualGrid">
             <label>
               Display name
@@ -68,7 +143,7 @@
             </label>
             <label>
               Secret reference
-              <input name="secretRef" required placeholder="op://ExampleVault/ExampleLogin/password" />
+              <input name="secretRef" required placeholder="op://MCPVAULT/ExampleLogin/password" />
             </label>
             <label>
               Allowed sites
@@ -85,8 +160,12 @@
 
       <section class="panel wide">
         <details>
-          <summary>Local settings</summary>
+          <summary>Advanced local settings</summary>
           <form id="settingsForm" class="settingsGrid">
+            <label>
+              Agent vault name
+              <input name="mcpVaultName" />
+            </label>
             <label>
               1Password CLI path
               <input name="opPath" />
@@ -94,10 +173,6 @@
             <label>
               Account
               <input name="account" placeholder="Optional account shorthand or sign-in address" />
-            </label>
-            <label>
-              Default vault
-              <input name="defaultVault" placeholder="Optional vault name or ID" />
             </label>
             <label>
               Clipboard clear seconds
@@ -141,7 +216,21 @@
       </article>
     </template>
 
-    <template id="candidateTemplate">
+    <template id="sourceCandidateTemplate">
+      <article class="item candidate">
+        <div class="itemMain">
+          <h3></h3>
+          <p class="meta"></p>
+          <p class="dragHint">Drag this login to a drop target, or use the buttons.</p>
+        </div>
+        <div class="actions">
+          <button class="copyBtn" type="button">Copy</button>
+          <button class="moveBtn secondary" type="button">Move</button>
+        </div>
+      </article>
+    </template>
+
+    <template id="mcpCandidateTemplate">
       <article class="item candidate">
         <div class="itemMain">
           <h3></h3>
