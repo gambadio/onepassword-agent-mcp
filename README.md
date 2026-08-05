@@ -26,13 +26,13 @@ The MCP tools only expose approved items from the configured agent vault.
 
 ## Quick Start
 
-Install from GitHub:
+Install from npm:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
+npm install -g onepassword-agent-mcp
 ```
 
-Or install from the latest `main` branch:
+Or install from GitHub:
 
 ```bash
 npm install -g github:gambadio/onepassword-agent-mcp
@@ -63,6 +63,24 @@ http://127.0.0.1:7319
 ```
 
 Full walkthrough: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+
+Uninstall guide: [docs/UNINSTALL.md](docs/UNINSTALL.md)
+
+## Does It Always Run?
+
+No. This package does not install a launch agent, daemon, background service, startup item, browser extension, or hidden resident process.
+
+- `onepassword-agent-mcp admin` runs the local approval console only while that terminal process is alive.
+- `onepassword-agent-mcp mcp` is a stdio MCP server. MCP clients such as Claude Code, Codex, or VS Code launch it as a child process when they need it.
+- `onepassword-agent-mcp setup ... --apply` only writes MCP client configuration.
+- Restarting the computer does not auto-start this project unless a separate tool or user-created startup script launches an MCP client that then launches the MCP server.
+- Persistent local state is limited to approvals and the local encryption key in `~/.onepassword-mcp`.
+
+You can see this explanation any time:
+
+```bash
+onepassword-agent-mcp runtime
+```
 
 ## Requirements
 
@@ -186,6 +204,38 @@ Generic config:
   }
 }
 ```
+
+## Stop And Uninstall
+
+Stop the local approval console by pressing `Ctrl-C` in the terminal running:
+
+```bash
+onepassword-agent-mcp admin
+```
+
+Disconnect MCP clients:
+
+```bash
+onepassword-agent-mcp uninstall all
+onepassword-agent-mcp uninstall all --apply
+```
+
+The uninstall command removes Claude Code and Codex config entries where their CLIs are installed. VS Code currently exposes an add command but no stable remove flag in its CLI, so the command prints the manual VS Code cleanup step for Copilot.
+
+Remove the global npm package:
+
+```bash
+npm uninstall -g onepassword-agent-mcp
+```
+
+Optional: delete this app's local approvals and encryption key:
+
+```bash
+onepassword-agent-mcp uninstall state
+onepassword-agent-mcp uninstall state --apply
+```
+
+This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items. Delete `MCPVAULT` inside 1Password only if you intentionally want to remove that vault.
 
 ## MCP Tools
 

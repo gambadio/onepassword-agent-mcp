@@ -11,7 +11,7 @@ The CLI can configure common clients for you.
 ## Install 1Password Agent MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
+npm install -g onepassword-agent-mcp
 ```
 
 ## Claude Code
@@ -125,3 +125,33 @@ Then open:
 ```text
 http://127.0.0.1:7319
 ```
+
+## Runtime Behavior
+
+Installing the package creates CLI commands. It does not start anything at boot.
+
+- The admin UI exists only while `onepassword-agent-mcp admin` is running.
+- MCP clients launch `onepassword-agent-mcp mcp` as a stdio child process when the client session needs the server.
+- The setup command writes MCP client configuration; it does not install a daemon or service.
+
+Show the same explanation locally:
+
+```bash
+onepassword-agent-mcp runtime
+```
+
+## Remove Client Configuration
+
+Dry run:
+
+```bash
+onepassword-agent-mcp uninstall all
+```
+
+Apply supported removers:
+
+```bash
+onepassword-agent-mcp uninstall all --apply
+```
+
+Claude Code and Codex have CLI removers. VS Code exposes `code --add-mcp`, but no stable `code --remove-mcp` flag was detected, so remove the server named `onepassword-agent-mcp` from VS Code's MCP configuration UI or from `.vscode/mcp.json` if you used workspace config.

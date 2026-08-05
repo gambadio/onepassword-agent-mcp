@@ -19,7 +19,7 @@ Put only the logins you are comfortable letting agents use into that vault. Then
 Install the package:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
+npm install -g onepassword-agent-mcp
 ```
 
 Check your machine:
@@ -127,3 +127,42 @@ Most users can leave them alone.
 Use desktop 1Password CLI integration for interactive local use.
 
 For stricter production or headless use, create a 1Password service account that has access only to `MCPVAULT`, then run the MCP with `OP_SERVICE_ACCOUNT_TOKEN`.
+
+## Is It Always Running?
+
+No. Installing 1Password Agent MCP adds local commands and lets MCP clients launch the server when needed. It does not install a startup item or hidden background service.
+
+- The approval console runs only while `onepassword-agent-mcp admin` is running.
+- The MCP server runs only when an MCP client launches `onepassword-agent-mcp mcp`.
+- Client setup writes client config, so the client can launch the MCP later.
+- Restarting the computer does not auto-start this project by itself.
+
+Run this any time:
+
+```bash
+onepassword-agent-mcp runtime
+```
+
+## Uninstall
+
+1. Stop the admin console with `Ctrl-C`.
+2. Disconnect clients:
+
+```bash
+onepassword-agent-mcp uninstall all
+onepassword-agent-mcp uninstall all --apply
+```
+
+3. Remove the npm package:
+
+```bash
+npm uninstall -g onepassword-agent-mcp
+```
+
+4. Optional: remove local approvals and the local encryption key:
+
+```bash
+onepassword-agent-mcp uninstall state --apply
+```
+
+This optional cleanup removes `~/.onepassword-mcp`. It does not delete `MCPVAULT` or any 1Password item.

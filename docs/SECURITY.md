@@ -16,6 +16,15 @@ With 1Password desktop CLI integration, the local `op` session may technically h
 
 For the strictest 1Password-side boundary, use a 1Password service account scoped only to `MCPVAULT`.
 
+## Process Model
+
+The package does not install a launch agent, daemon, service, startup item, browser extension, or hidden resident process.
+
+- The admin console runs only while `onepassword-agent-mcp admin` is running.
+- The MCP server runs as a stdio child process when an MCP client launches `onepassword-agent-mcp mcp`.
+- Client setup writes MCP client configuration only.
+- Persistent local app state is limited to `~/.onepassword-mcp` unless `ONEPASSWORD_MCP_HOME` is set.
+
 ## What Is Protected
 
 - Passwords are not stored by this project.

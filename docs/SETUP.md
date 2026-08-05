@@ -34,7 +34,7 @@ Click **Authorize** only for MCP clients you trust.
 ## 3. Install The MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
+npm install -g onepassword-agent-mcp
 ```
 
 Run:
@@ -138,10 +138,41 @@ The agent should not receive the plaintext password.
 
 ## Update
 
-Install the latest tagged version again:
+Install the latest npm version again:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
+npm install -g onepassword-agent-mcp@latest
 ```
 
 Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling the package.
+
+## Stop Or Uninstall
+
+The package does not install a launch agent, daemon, service, startup item, browser extension, or hidden background process.
+
+Stop the admin console with `Ctrl-C` in the terminal that is running:
+
+```bash
+onepassword-agent-mcp admin
+```
+
+Disconnect supported MCP clients:
+
+```bash
+onepassword-agent-mcp uninstall all
+onepassword-agent-mcp uninstall all --apply
+```
+
+Remove the npm package:
+
+```bash
+npm uninstall -g onepassword-agent-mcp
+```
+
+Optional local cleanup:
+
+```bash
+onepassword-agent-mcp uninstall state --apply
+```
+
+This removes `~/.onepassword-mcp`, which contains local approvals and the local encryption key. It does not delete `MCPVAULT` or any 1Password item.

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
+import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { startAdmin } from "./admin.js";
 import { startMcp } from "./mcp.js";
@@ -31,8 +32,14 @@ async function main(argv) {
         case "doctor":
             await doctor();
             return;
+        case "runtime":
+            printRuntimeInfo();
+            return;
         case "setup":
             await setup(normalizeTarget(args.positionals[0] || "all"), args);
+            return;
+        case "uninstall":
+            await uninstall(normalizeUninstallTarget(args.positionals[0] || "all"), args);
             return;
         case "help":
             printHelp();
@@ -52,6 +59,10 @@ function normalizeCommand(command) {
         return "doctor";
     if (command === "install" || command === "configure" || command === "config")
         return "setup";
+    if (command === "remove" || command === "disconnect" || command === "teardown")
+        return "uninstall";
+    if (command === "background" || command === "status" || command === "transparency")
+        return "runtime";
     return command;
 }
 function parseArgs(argv) {
@@ -103,7 +114,13 @@ function normalizeTarget(target) {
         return "generic";
     if (value === "all")
         return "all";
-    throw new Error(`Unknown setup target: ${target}`);
+    throw new Error(`Unknown client target: ${target}`);
+}
+function normalizeUninstallTarget(target) {
+    const value = target.toLowerCase();
+    if (value === "state" || value === "local-state" || value === "data" || value === "policy")
+        return "state";
+    return normalizeTarget(target);
 }
 async function doctor() {
     console.log("1Password Agent MCP doctor\n");
@@ -170,6 +187,8 @@ async function doctor() {
         console.log(`    Then open ${adminUrl}`);
     }
     console.log("");
+    printRuntimeSummary();
+    console.log("");
     if (failures) {
         console.log(`${failures} required check(s) failed.`);
         process.exitCode = 1;
@@ -177,6 +196,30 @@ async function doctor() {
     else {
         console.log("Ready. Approve logins in the admin UI, then connect an MCP client.");
     }
+}
+function printRuntimeInfo() {
+    console.log("1Password Agent MCP runtime\n");
+    printRuntimeSummary();
+    console.log("");
+    console.log("Stop:");
+    console.log("  Admin console: press Ctrl-C in the terminal running onepassword-agent-mcp admin.");
+    console.log("  MCP server: close the MCP client session that launched it.");
+    console.log("");
+    console.log("Uninstall:");
+    console.log("  onepassword-agent-mcp uninstall all");
+    console.log("  onepassword-agent-mcp uninstall all --apply");
+    console.log("  npm uninstall -g onepassword-agent-mcp");
+    console.log("");
+    console.log("Optional local-state removal:");
+    console.log(`  onepassword-agent-mcp uninstall state`);
+    console.log(`  onepassword-agent-mcp uninstall state --apply`);
+}
+function printRuntimeSummary() {
+    console.log("Runtime model:");
+    console.log("  No launch agent, daemon, service, or startup item is installed.");
+    console.log("  The admin console runs only while onepassword-agent-mcp admin is running.");
+    console.log("  MCP clients launch onepassword-agent-mcp mcp as a stdio child process when they need it.");
+    console.log(`  Persistent local files live in ${appHome()}.`);
 }
 async function setup(target, args) {
     const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
@@ -191,6 +234,32 @@ async function setup(target, args) {
     for (const item of targets) {
         applySetup(item, args.scope);
     }
+}
+async function uninstall(target, args) {
+    if (target === "state") {
+        await uninstallState(args);
+        return;
+    }
+    const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
+    if (args.json || target === "generic") {
+        printGenericUninstall();
+        return;
+    }
+    if (!args.apply) {
+        printUninstallPlan(targets, args.scope);
+        return;
+    }
+    for (const item of targets) {
+        applyUninstall(item, args.scope);
+    }
+    console.log("");
+    console.log("MCP client entries removed where supported.");
+    console.log("To remove the npm package too, run:");
+    console.log("  npm uninstall -g onepassword-agent-mcp");
+    console.log("");
+    console.log("To delete only this app's local approvals and encryption key, run:");
+    console.log("  onepassword-agent-mcp uninstall state --apply");
+    console.log("This does not delete 1Password vaults or items.");
 }
 function printSetupPlan(targets, scope) {
     console.log("1Password Agent MCP setup\n");
@@ -224,6 +293,42 @@ function printSetupPlan(targets, scope) {
     console.log("  onepassword-agent-mcp admin");
     console.log("  onepassword-agent-mcp doctor");
 }
+function printUninstallPlan(targets, scope) {
+    console.log("1Password Agent MCP uninstall\n");
+    console.log("This dry run does not modify client config. Add --apply to run supported CLI removers.\n");
+    for (const target of targets) {
+        if (target === "claude-code") {
+            console.log("Claude Code");
+            console.log(`  ${formatCommand("claude", claudeRemoveArgs(scope))}`);
+            console.log("");
+        }
+        else if (target === "codex") {
+            console.log("Codex");
+            console.log(`  ${formatCommand("codex", codexRemoveArgs())}`);
+            console.log("");
+        }
+        else if (target === "copilot") {
+            console.log("GitHub Copilot in VS Code");
+            console.log("  The VS Code CLI exposes --add-mcp, but no stable --remove-mcp flag was found.");
+            console.log(`  Remove the server named ${serverName} from VS Code's MCP configuration UI, or from .vscode/mcp.json if you used workspace config.`);
+            console.log("");
+        }
+        else if (target === "generic") {
+            printGenericUninstall();
+        }
+    }
+    console.log("Then uninstall the npm package:");
+    console.log("  npm uninstall -g onepassword-agent-mcp");
+    console.log("");
+    console.log("Optional: delete this app's local approvals and encryption key:");
+    console.log("  onepassword-agent-mcp uninstall state --apply");
+    console.log("This does not delete 1Password vaults or items.");
+}
+function printGenericUninstall() {
+    console.log("Generic MCP client");
+    console.log(`  Remove the ${serverName} server block from your client's MCP config.`);
+    console.log("");
+}
 function applySetup(target, scope) {
     if (target === "generic") {
         console.log(JSON.stringify(genericMcpServersConfig(), null, 2));
@@ -252,6 +357,48 @@ function applySetup(target, scope) {
     }
     ok(`${spec.label}: configured`);
 }
+function applyUninstall(target, scope) {
+    if (target === "generic") {
+        printGenericUninstall();
+        return;
+    }
+    const spec = removeSpec(target, scope);
+    if (!spec) {
+        warn("GitHub Copilot in VS Code: automatic removal is not available through the detected code CLI.");
+        console.log(`    Remove the server named ${serverName} from VS Code's MCP configuration UI, or from .vscode/mcp.json if you used workspace config.`);
+        return;
+    }
+    if (!commandExists(spec.command)) {
+        warn(`${spec.label}: ${spec.command} was not found in PATH.`);
+        console.log(`    ${formatCommand(spec.command, spec.args)}`);
+        return;
+    }
+    const result = spawnSync(spec.command, spec.args, { stdio: "inherit" });
+    if (result.error) {
+        fail(`${spec.label}: ${result.error.message}`);
+        process.exitCode = 1;
+        return;
+    }
+    if (typeof result.status === "number" && result.status !== 0) {
+        fail(`${spec.label}: remover exited with code ${result.status}`);
+        process.exitCode = result.status;
+        return;
+    }
+    ok(`${spec.label}: removed`);
+}
+async function uninstallState(args) {
+    console.log("1Password Agent MCP local-state removal\n");
+    console.log(`Local state directory: ${appHome()}`);
+    console.log("This contains this app's approval policy and local encryption key.");
+    console.log("It does not contain plaintext passwords and does not delete 1Password vaults or items.\n");
+    if (!args.apply) {
+        console.log("Dry run only. To remove local state, run:");
+        console.log("  onepassword-agent-mcp uninstall state --apply");
+        return;
+    }
+    await rm(appHome(), { recursive: true, force: true });
+    ok(`Removed local state directory: ${appHome()}`);
+}
 function targetSpec(target, scope) {
     if (target === "claude-code")
         return { label: "Claude Code", command: "claude", args: claudeArgs(scope) };
@@ -259,11 +406,24 @@ function targetSpec(target, scope) {
         return { label: "Codex", command: "codex", args: codexArgs() };
     return { label: "GitHub Copilot in VS Code", command: "code", args: copilotArgs() };
 }
+function removeSpec(target, scope) {
+    if (target === "claude-code")
+        return { label: "Claude Code", command: "claude", args: claudeRemoveArgs(scope) };
+    if (target === "codex")
+        return { label: "Codex", command: "codex", args: codexRemoveArgs() };
+    return null;
+}
 function claudeArgs(scope) {
     return ["mcp", "add", "--scope", scope, serverName, "--", mcpCommand, ...mcpArgs];
 }
 function codexArgs() {
     return ["mcp", "add", serverName, "--", mcpCommand, ...mcpArgs];
+}
+function claudeRemoveArgs(scope) {
+    return ["mcp", "remove", "--scope", scope, serverName];
+}
+function codexRemoveArgs() {
+    return ["mcp", "remove", serverName];
 }
 function copilotArgs() {
     return ["--add-mcp", JSON.stringify({
@@ -326,13 +486,17 @@ Usage:
   onepassword-agent-mcp admin
   onepassword-agent-mcp mcp
   onepassword-agent-mcp doctor
+  onepassword-agent-mcp runtime
   onepassword-agent-mcp setup [all|claude-code|codex|copilot|generic] [--apply]
+  onepassword-agent-mcp uninstall [all|claude-code|codex|copilot|generic|state] [--apply]
 
 Commands:
   admin      Start the local approval console at http://127.0.0.1:7319
   mcp        Start the stdio MCP server. MCP clients run this command.
   doctor     Check Node.js, 1Password CLI, auth, local state, and admin UI.
+  runtime    Explain what runs, what persists, and how to stop it.
   setup      Print or apply client MCP configuration.
+  uninstall  Print or apply client MCP removal. State removal is explicit.
 
 Setup examples:
   onepassword-agent-mcp setup all
@@ -341,6 +505,13 @@ Setup examples:
   onepassword-agent-mcp setup codex --apply
   onepassword-agent-mcp setup copilot --apply
   onepassword-agent-mcp setup generic --json
+
+Uninstall examples:
+  onepassword-agent-mcp uninstall all
+  onepassword-agent-mcp uninstall claude-code --apply
+  onepassword-agent-mcp uninstall codex --apply
+  onepassword-agent-mcp uninstall state
+  onepassword-agent-mcp uninstall state --apply
 `);
 }
 main(process.argv.slice(2)).catch((error) => {
