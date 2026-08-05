@@ -47,6 +47,30 @@ test("blank allowed sites approve an item for every URL", async () => {
   });
 });
 
+test("profile entries honor site allow lists", async () => {
+  await withTempHome(async () => {
+    const policy = new PolicyService(new StateStore());
+    await policy.createProfileEntry({
+      label: "Work email",
+      kind: "email",
+      value: "person@example.com",
+      sites: ["example.com"],
+    });
+    await policy.createProfileEntry({
+      label: "Public phone",
+      kind: "phone",
+      value: "+1 555 0100",
+      sites: [],
+    });
+
+    const example = await policy.findProfileForSite("https://app.example.com");
+    assert.deepEqual(example.map((entry) => entry.label), ["Work email", "Public phone"]);
+
+    const noSite = await policy.findProfileForSite();
+    assert.deepEqual(noSite.map((entry) => entry.label), ["Public phone"]);
+  });
+});
+
 async function withTempHome(run: () => Promise<void>): Promise<void> {
   const previousHome = process.env.ONEPASSWORD_MCP_HOME;
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-policy-test-"));

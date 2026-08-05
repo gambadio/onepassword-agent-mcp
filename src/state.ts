@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Settings = {
   clipboardClearSeconds: 20,
   autoPasteByDefault: true,
   allowPasteWithoutSite: false,
+  allowAgentItemCreate: false,
   defaultVault: "",
   mcpVaultName: process.env.MCP_VAULT_NAME || "MCPVAULT",
 };
@@ -33,6 +34,7 @@ export class StateStore {
         ...parsed,
         settings,
         grants: parsed.grants || [],
+        profile: parsed.profile || [],
         audit: parsed.audit || [],
       };
     } catch (error) {
@@ -46,6 +48,7 @@ export class StateStore {
         updatedAt: now,
         settings: DEFAULT_SETTINGS,
         grants: [],
+        profile: [],
         audit: [],
       };
       await this.save(initial);

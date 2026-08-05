@@ -24,19 +24,19 @@
   <g transform="translate(452 184)">
     <circle cx="14" cy="14" r="14" fill="#ebf2ff"/>
     <text x="14" y="19" text-anchor="middle" fill="#1d4ed8" font-family="Arial, sans-serif" font-size="14" font-weight="700">2</text>
-    <text x="42" y="8" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">Copy logins into that vault</text>
+    <text x="42" y="8" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">Copy items into that vault</text>
     <text x="42" y="29" fill="#627084" font-family="Arial, sans-serif" font-size="12">Copy keeps the original item in place.</text>
   </g>
   <g transform="translate(868 184)">
     <circle cx="14" cy="14" r="14" fill="#ebf2ff"/>
     <text x="14" y="19" text-anchor="middle" fill="#1d4ed8" font-family="Arial, sans-serif" font-size="14" font-weight="700">3</text>
-    <text x="42" y="8" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">Approve sites for agents</text>
-    <text x="42" y="29" fill="#627084" font-family="Arial, sans-serif" font-size="12">Passwords resolve locally only during copy or paste.</text>
+    <text x="42" y="8" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">Approve exact fields</text>
+    <text x="42" y="29" fill="#627084" font-family="Arial, sans-serif" font-size="12">Fields resolve locally only during copy or paste.</text>
   </g>
 
   <rect x="18" y="274" width="1244" height="126" rx="8" fill="#ffffff" stroke="#d7dee8"/>
   <text x="36" y="306" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Vault Workbench</text>
-  <text x="36" y="328" fill="#627084" font-family="Arial, sans-serif" font-size="13">Drag a login from the source vault into the agent vault.</text>
+  <text x="36" y="328" fill="#627084" font-family="Arial, sans-serif" font-size="13">Drag an item from the source vault into the agent vault.</text>
   <rect x="36" y="346" width="590" height="36" rx="8" fill="#f0faf8" stroke="#147d73"/>
   <text x="331" y="369" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="14" font-weight="700">Copy Into MCPVAULT</text>
   <rect x="654" y="346" width="590" height="36" rx="8" fill="#ffffff" stroke="#aab7c7" stroke-dasharray="6 5"/>

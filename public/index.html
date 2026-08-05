@@ -37,17 +37,17 @@
             </div>
           </div>
           <div class="step">
-            <span class="stepNumber">2</span>
-            <div>
-              <h3>Copy logins into that vault</h3>
+              <span class="stepNumber">2</span>
+              <div>
+              <h3>Copy items into that vault</h3>
               <p class="meta">Copy keeps the original item in place. Move removes it from the source vault.</p>
             </div>
           </div>
           <div class="step">
-            <span class="stepNumber">3</span>
-            <div>
-              <h3>Approve sites for agents</h3>
-              <p class="meta">The MCP gives agents encrypted handles, then resolves the password locally only at copy or paste time.</p>
+              <span class="stepNumber">3</span>
+              <div>
+              <h3>Approve exact fields</h3>
+              <p class="meta">The MCP gives agents encrypted handles, then resolves a field locally only at copy or paste time.</p>
             </div>
           </div>
         </div>
@@ -58,17 +58,17 @@
         <div class="panelHeader">
           <div>
             <h2>Vault Workbench</h2>
-            <p class="hint">Drag a login from the source vault into the agent vault, then approve where agents may use it.</p>
+            <p class="hint">Drag an item from the source vault into the agent vault, then approve the exact fields agents may use.</p>
           </div>
         </div>
         <div class="dropTargets">
           <div class="dropTarget primaryDrop" data-drop-mode="copy" role="button" tabindex="0">
             <span>Copy Into MCPVAULT</span>
-            <p>Leaves the original login in its current vault.</p>
+            <p>Leaves the original item in its current vault.</p>
           </div>
           <div class="dropTarget" data-drop-mode="move" role="button" tabindex="0">
             <span>Move Into MCPVAULT</span>
-            <p>Moves the login out of the source vault after confirmation.</p>
+            <p>Moves the item out of the source vault after confirmation.</p>
           </div>
         </div>
       </section>
@@ -103,7 +103,7 @@
         <div class="panelHeader">
           <div>
             <h2>Approve Agent Items</h2>
-            <p class="hint">Only items already inside the agent vault can be approved for MCP use.</p>
+            <p class="hint">Only fields already inside the agent vault can be approved for MCP use.</p>
           </div>
           <button id="loadMcpBtn" type="button">Refresh</button>
         </div>
@@ -125,11 +125,48 @@
         <div class="panelHeader">
           <div>
             <h2>Allowed For Agents</h2>
-            <p class="hint">Enabled entries are the only password handles MCP clients can request.</p>
+            <p class="hint">Enabled entries are the only secret handles MCP clients can request.</p>
           </div>
           <span id="grantCount" class="pill"></span>
         </div>
         <div id="grants" class="list grantList"></div>
+      </section>
+
+      <section class="panel wide">
+        <div class="panelHeader">
+          <div>
+            <h2>Profile Data For Agents</h2>
+            <p class="hint">Email, phone, address, and similar details that agents may read directly. Blank allowed sites means all sites.</p>
+          </div>
+        </div>
+        <form id="profileForm" class="profileGrid">
+          <label>
+            Type
+            <select name="kind">
+              <option value="email">Email</option>
+              <option value="phone">Phone</option>
+              <option value="address">Address</option>
+              <option value="name">Name</option>
+              <option value="company">Company</option>
+              <option value="username">Username</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label>
+            Label
+            <input name="label" required placeholder="Work email" />
+          </label>
+          <label class="span2">
+            Value
+            <textarea name="value" required placeholder="you@example.com"></textarea>
+          </label>
+          <label>
+            Allowed sites
+            <input name="sites" placeholder="blank means all sites" />
+          </label>
+          <button type="submit">Add Profile Data</button>
+        </form>
+        <div id="profileEntries" class="list profileList"></div>
       </section>
 
       <section class="panel wide">
@@ -182,6 +219,10 @@
               <input name="allowPasteWithoutSite" type="checkbox" />
               Allow paste without expected site
             </label>
+            <label class="check">
+              <input name="allowAgentItemCreate" type="checkbox" />
+              Allow agents to save new items into MCPVAULT
+            </label>
             <button type="submit">Save Settings</button>
           </form>
         </details>
@@ -221,7 +262,7 @@
         <div class="itemMain">
           <h3></h3>
           <p class="meta"></p>
-          <p class="dragHint">Drag this login to a drop target, or use the buttons.</p>
+          <p class="dragHint">Drag this item to a drop target, or use the buttons.</p>
         </div>
         <div class="actions">
           <button class="copyBtn" type="button">Copy</button>
@@ -243,6 +284,31 @@
         <div class="actions">
           <button class="approveBtn" type="button">Approve</button>
           <button class="deleteItemBtn danger" type="button">Delete</button>
+        </div>
+      </article>
+    </template>
+
+    <template id="profileTemplate">
+      <article class="item">
+        <div class="itemMain">
+          <h3></h3>
+          <p class="meta"></p>
+          <label>
+            Value
+            <textarea class="profileValueInput"></textarea>
+          </label>
+          <label>
+            Allowed sites
+            <input class="profileSitesInput" />
+          </label>
+        </div>
+        <div class="actions">
+          <label class="switch">
+            <input class="profileEnabledInput" type="checkbox" />
+            <span>Enabled</span>
+          </label>
+          <button class="profileSaveBtn secondary" type="button">Save</button>
+          <button class="profileDeleteBtn danger" type="button">Delete</button>
         </div>
       </article>
     </template>

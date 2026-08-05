@@ -1,4 +1,4 @@
-import type { CandidateSearchResult, OpVaultSummary, Settings } from "./types.js";
+import type { Candidate, CandidateMode, CandidateSearchResult, CreateSecretItemInput, OpItemDetail, OpVaultSummary, Settings } from "./types.js";
 interface RunResult {
     stdout: string;
     stderr: string;
@@ -26,13 +26,17 @@ export declare class OpCli {
         vault: string;
     }): Promise<void>;
     readSecret(secretRef: string): Promise<string>;
+    createSecretItem(input: CreateSecretItemInput): Promise<OpItemDetail>;
     listCandidates(options: {
         vault?: string;
         limit?: number;
         query?: string;
         key: Buffer;
+        mode?: CandidateMode;
     }): Promise<CandidateSearchResult>;
-    private itemToCandidate;
+    getItem(item: string, vault?: string): Promise<OpItemDetail>;
+    itemToCandidates(item: OpItemDetail, key: Buffer, fallbackVault?: string, mode?: CandidateMode): Candidate[];
+    private mapWithConcurrency;
     run(args: string[], options?: {
         timeoutMs?: number;
         input?: string;

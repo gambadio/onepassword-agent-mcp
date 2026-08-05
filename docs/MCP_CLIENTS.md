@@ -126,6 +126,18 @@ Then open:
 http://127.0.0.1:7319
 ```
 
+## Current MCP Tools
+
+- `onepassword_status`: check local status without returning secrets.
+- `find_secrets_for_site`: get encrypted handles for approved fields on a website.
+- `list_approved_secrets`: list enabled approved handles.
+- `copy_secret`: copy an approved field to the clipboard without returning plaintext.
+- `paste_secret`: paste an approved field into the active app without returning plaintext.
+- `clear_secret_clipboard`: clear the clipboard.
+- `save_secret_item`: save a new Login, Password, API Credential, Secure Note, or Credit Card item into `MCPVAULT` after the local save setting is enabled.
+- `get_profile_data`: return local profile values the user entered in the admin UI.
+- `find_passwords_for_site`, `list_approved_passwords`, `copy_password`, `paste_password`, and `clear_password_clipboard`: compatibility aliases.
+
 ## Runtime Behavior
 
 Installing the package creates CLI commands. It does not start anything at boot.

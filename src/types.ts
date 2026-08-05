@@ -1,4 +1,36 @@
-export type SecretKind = "password" | "username" | "otp" | "custom";
+export type SecretKind =
+  | "password"
+  | "username"
+  | "otp"
+  | "api_credential"
+  | "credit_card_name"
+  | "credit_card_number"
+  | "credit_card_cvv"
+  | "credit_card_pin"
+  | "credit_card_expiry"
+  | "secure_note"
+  | "ssh_private_key"
+  | "license_key"
+  | "text"
+  | "custom";
+
+export type CandidateMode = "primary" | "all";
+
+export type CreateSecretCategory =
+  | "login"
+  | "password"
+  | "api_credential"
+  | "secure_note"
+  | "credit_card";
+
+export type ProfileKind =
+  | "name"
+  | "email"
+  | "phone"
+  | "address"
+  | "company"
+  | "username"
+  | "custom";
 
 export interface Settings {
   opPath: string;
@@ -8,6 +40,7 @@ export interface Settings {
   clipboardClearSeconds: number;
   autoPasteByDefault: boolean;
   allowPasteWithoutSite: boolean;
+  allowAgentItemCreate: boolean;
   defaultVault: string;
   mcpVaultName: string;
 }
@@ -31,6 +64,18 @@ export interface Grant {
   note?: string;
 }
 
+export interface ProfileEntry {
+  id: string;
+  label: string;
+  kind: ProfileKind;
+  value: string;
+  sites: string[];
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  note?: string;
+}
+
 export interface AuditEvent {
   id: string;
   type:
@@ -44,7 +89,12 @@ export interface AuditEvent {
     | "vault.created"
     | "item.copied"
     | "item.moved"
-    | "item.deleted";
+    | "item.deleted"
+    | "item.saved"
+    | "profile.created"
+    | "profile.updated"
+    | "profile.deleted"
+    | "profile.read";
   grantId?: string;
   site?: string;
   message: string;
@@ -57,6 +107,7 @@ export interface PolicyFile {
   updatedAt: string;
   settings: Settings;
   grants: Grant[];
+  profile: ProfileEntry[];
   audit: AuditEvent[];
 }
 
@@ -76,6 +127,9 @@ export interface CandidatePayload {
   itemId?: string;
   itemTitle?: string;
   fieldLabel: string;
+  fieldId?: string;
+  fieldType?: string;
+  fieldPurpose?: string;
   kind: SecretKind;
   category?: string;
   sites: string[];
@@ -89,6 +143,9 @@ export interface Candidate {
   vaultName?: string;
   itemTitle?: string;
   fieldLabel: string;
+  fieldId?: string;
+  fieldType?: string;
+  fieldPurpose?: string;
   kind: SecretKind;
   category?: string;
   sites: string[];
@@ -131,8 +188,42 @@ export interface OpItemSummary {
   category?: string;
 }
 
+export interface OpItemField {
+  id?: string;
+  type?: string;
+  purpose?: string;
+  label?: string;
+  value?: unknown;
+  reference?: string;
+  section?: {
+    id?: string;
+    label?: string;
+  };
+}
+
+export interface OpItemDetail extends OpItemSummary {
+  fields?: OpItemField[];
+}
+
 export interface OpVaultSummary {
   id?: string;
   name?: string;
   items?: number;
+}
+
+export interface CreateSecretItemInput {
+  vault: string;
+  title: string;
+  category: CreateSecretCategory;
+  url?: string;
+  username?: string;
+  password?: string;
+  credential?: string;
+  hostname?: string;
+  notes?: string;
+  cardholderName?: string;
+  cardNumber?: string;
+  verificationNumber?: string;
+  expiry?: string;
+  pin?: string;
 }

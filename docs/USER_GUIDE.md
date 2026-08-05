@@ -1,6 +1,6 @@
 # User Guide
 
-This guide uses fake example vaults and logins. Your install connects only to your own local 1Password account.
+This guide uses fake example vaults and items. Your install connects only to your own local 1Password account.
 
 ## The Simple Model
 
@@ -10,7 +10,7 @@ This guide uses fake example vaults and logins. Your install connects only to yo
 MCPVAULT
 ```
 
-Put only the logins you are comfortable letting agents use into that vault. Then approve each login for specific websites.
+Put only the items you are comfortable letting agents use into that vault. Then approve exact fields for specific websites.
 
 ![Vault workbench](screenshots/mcpvault-workbench.svg)
 
@@ -46,23 +46,23 @@ If the console says `MCPVAULT does not exist yet`, click **Create MCPVAULT**.
 
 That creates an empty 1Password vault. It does not copy, move, or approve anything yet.
 
-## Step 2: Copy Or Move Logins Into MCPVAULT
+## Step 2: Copy Or Move Items Into MCPVAULT
 
 Use **Choose From 1Password**:
 
 1. Pick your source vault, such as `Private`.
-2. Search by login name, website, or account label.
-3. Drag the login to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+2. Search by item name, website, category, or account label.
+3. Drag the item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
 
 ![Drag to copy](screenshots/drag-to-copy.svg)
 
-Use **Copy** first when you are unsure. Copy leaves the original item in the source vault.
+Use **Copy** first when you are unsure. Copy leaves the original item in the source vault and duplicates its fields into `MCPVAULT`.
 
-Use **Move** only when you want the login removed from the source vault. 1Password creates a new item in the destination vault, so the item ID changes.
+Use **Move** only when you want the item removed from the source vault. 1Password creates a new item in the destination vault, so the item ID changes.
 
-## Step 3: Approve Agent Sites
+## Step 3: Approve Agent Fields
 
-After a login is inside `MCPVAULT`, it appears under **Approve Agent Items**.
+After an item is inside `MCPVAULT`, its approvable fields appear under **Approve Agent Items**.
 
 1. Search the agent vault.
 2. Enter allowed sites, such as:
@@ -71,13 +71,28 @@ After a login is inside `MCPVAULT`, it appears under **Approve Agent Items**.
 github.com, *.github.com
 ```
 
-Leave allowed sites blank when the login may be used on any URL.
+Leave allowed sites blank when the field may be used on any URL.
 
 3. Click **Approve**.
 
 ![Approve sites](screenshots/approve-sites.svg)
 
-Approved logins appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP does not return plaintext passwords.
+Approved fields appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP copy/paste tools do not return plaintext field values.
+
+Supported fields include normal login passwords, API credentials, credit-card number/CVV/expiry fields, secure-note text, SSH private keys, and many custom concealed fields.
+
+## Step 4: Add Profile Data
+
+Use **Profile Data For Agents** when an agent needs contact or identity details that are not a 1Password secret field:
+
+- email address
+- phone number
+- mailing address
+- name
+- company
+- username
+
+Profile data is stored locally by this app and returned directly through the `get_profile_data` MCP tool. Use allowed sites when a value should only be used on specific websites. Leave allowed sites blank when it may be used anywhere.
 
 ## Delete An Agent Vault Item
 
@@ -89,16 +104,18 @@ The console asks for confirmation first. 1Password moves deleted items to Recent
 
 Agents can:
 
-- Ask which approved passwords match the current website.
+- Ask which approved secret fields match the current website.
 - Receive encrypted local handles.
-- Ask the MCP to copy or paste a password.
+- Ask the MCP to copy or paste a field.
+- Save new logins, passwords, API credentials, secure notes, or credit cards into `MCPVAULT` after you enable that write permission in local settings.
+- Read profile data that you added in the admin page.
 
 Agents cannot:
 
 - Search your whole 1Password account through the MCP.
-- See plaintext passwords in model responses.
+- See plaintext 1Password secret fields in model responses from copy/paste tools.
 - Use entries that are not enabled under **Allowed For Agents**.
-- Use a password for the wrong site unless you turn on the unsafe advanced setting.
+- Use a secret for the wrong site unless you turn on the unsafe advanced setting.
 
 ## What Is The Expert Fallback?
 
@@ -110,7 +127,7 @@ Use it only when the normal search cannot show the exact field you need, for exa
 op://MCPVAULT/GitHub deploy token/password
 ```
 
-The app encrypts that reference locally. It still does not store the password.
+The app encrypts that reference locally. It still does not store the field value.
 
 ## What Are Advanced Local Settings?
 
@@ -119,8 +136,9 @@ Most users can leave them alone.
 - `Agent vault name`: the dedicated vault agents may use. Default: `MCPVAULT`.
 - `1Password CLI path`: where the `op` command lives. Default: `op`.
 - `Account`: optional account shorthand or sign-in address.
-- `Clipboard clear seconds`: how long a copied password stays on the clipboard.
+- `Clipboard clear seconds`: how long a copied field value stays on the clipboard.
 - `Allow paste without expected site`: keep this off. It removes the site safety check.
+- `Allow agents to save new items into MCPVAULT`: opt-in write permission for MCP clients to create new items in the agent vault.
 
 ## Best Practice
 

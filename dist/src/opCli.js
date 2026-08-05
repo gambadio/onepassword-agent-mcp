@@ -32,7 +32,7 @@ export class OpCli {
             "create",
             name,
             "--description",
-            "Vault used by 1Password Agent MCP for agent-approved login items.",
+            "Vault used by 1Password Agent MCP for agent-approved items.",
         ], { timeoutMs: 45_000 });
         const text = result.stdout.trim();
         if (!text)
@@ -46,15 +46,35 @@ export class OpCli {
         }
     }
     async copyItemToVault(input) {
-        await this.pipeOp(["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"], [
+        const sourceArgs = [
             "item",
-            "create",
-            "--category",
-            createCategory(input.category),
+            "get",
+            input.itemId,
             "--vault",
-            input.destinationVault,
-            "-",
-        ], 90_000);
+            input.currentVault,
+            "--format",
+            "json",
+            "--reveal",
+        ];
+        const documentedCloneArgs = ["item", "create", "--vault", input.destinationVault, "-"];
+        try {
+            await this.pipeOp(sourceArgs, documentedCloneArgs, 90_000);
+        }
+        catch (error) {
+            const message = error.message;
+            if (!input.category || !/category/i.test(message)) {
+                throw error;
+            }
+            await this.pipeOp(sourceArgs, [
+                "item",
+                "create",
+                "--category",
+                createCategory(input.category),
+                "--vault",
+                input.destinationVault,
+                "-",
+            ], 90_000);
+        }
     }
     async moveItemToVault(input) {
         await this.run([
@@ -80,6 +100,20 @@ export class OpCli {
         const result = await this.run(["read", "--no-newline", secretRef], { timeoutMs: 30_000 });
         return result.stdout;
     }
+    async createSecretItem(input) {
+        const template = createItemTemplate(input);
+        const result = await this.run(["item", "create", "--vault", input.vault, "-"], { timeoutMs: 60_000, input: JSON.stringify(template) });
+        const created = JSON.parse(result.stdout || "{}");
+        if (created.id) {
+            return await this.getItem(created.id, input.vault);
+        }
+        return {
+            ...created,
+            title: created.title || input.title,
+            category: created.category || String(template.category || input.category),
+            vault: created.vault || { name: input.vault },
+        };
+    }
     async listCandidates(options) {
         const vault = options.vault || this.settings.defaultVault;
         const limit = Math.max(1, Math.min(options.limit || 100, 500));
@@ -87,8 +121,6 @@ export class OpCli {
         const args = [
             "item",
             "list",
-            "--categories",
-            "Login,Password",
             "--long",
             "--format",
             "json",
@@ -98,9 +130,8 @@ export class OpCli {
         const result = await this.run(args, { timeoutMs: 60_000 });
         const items = JSON.parse(result.stdout || "[]");
         const matchedItems = query ? items.filter((item) => itemMatchesQuery(item, query)) : items;
-        const candidates = matchedItems
-            .slice(0, limit)
-            .map((item) => this.itemToCandidate(item, options.key, vault));
+        const details = await this.mapWithConcurrency(matchedItems.slice(0, limit), 6, async (item) => await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault));
+        const candidates = details.flatMap((item) => this.itemToCandidates(item, options.key, vault, options.mode || "all")).slice(0, limit);
         return {
             items: candidates,
             total: items.length,
@@ -109,7 +140,14 @@ export class OpCli {
             query,
         };
     }
-    itemToCandidate(item, key, fallbackVault) {
+    async getItem(item, vault) {
+        const args = ["item", "get", item, "--format", "json"];
+        if (vault)
+            args.push("--vault", vault);
+        const result = await this.run(args, { timeoutMs: 45_000 });
+        return JSON.parse(result.stdout || "{}");
+    }
+    itemToCandidates(item, key, fallbackVault, mode = "all") {
         const vaultId = item.vault?.id;
         const vaultName = item.vault?.name;
         const vaultRef = vaultId || vaultName || fallbackVault || this.settings.defaultVault;
@@ -117,32 +155,58 @@ export class OpCli {
             throw new Error("1Password did not return vault information. Set a default vault or enter a vault before loading items.");
         }
         const itemRef = item.id || item.title;
-        const fieldLabel = "password";
-        const secretRef = `op://${vaultRef}/${itemRef}/${fieldLabel}`;
         const sites = extractSites(item);
-        const payload = {
-            secretRef,
-            title: item.title,
-            vaultId,
-            vaultName,
-            itemId: item.id,
-            itemTitle: item.title,
-            fieldLabel,
-            kind: "password",
-            category: item.category,
-            sites,
-            issuedAt: new Date().toISOString(),
-        };
-        return {
-            token: sealJson(payload, key),
-            title: item.title,
-            vaultName,
-            itemTitle: item.title,
-            fieldLabel,
-            kind: "password",
-            category: item.category,
-            sites,
-        };
+        const fields = approvableFields(item);
+        const selectedFields = mode === "primary" ? fields.slice(0, 1) : fields;
+        return selectedFields.map(({ field, kind }) => {
+            const fieldLabel = field.label || field.id || "secret";
+            const secretRef = field.reference || buildSecretRef(vaultRef, itemRef, field.id || fieldLabel);
+            const title = mode === "primary" ? item.title : `${item.title} - ${fieldLabel}`;
+            const payload = {
+                secretRef,
+                title,
+                username: field.purpose === "USERNAME" ? undefined : findUsername(item),
+                vaultId,
+                vaultName,
+                itemId: item.id,
+                itemTitle: item.title,
+                fieldLabel,
+                fieldId: field.id,
+                fieldType: field.type,
+                fieldPurpose: field.purpose,
+                kind,
+                category: item.category,
+                sites,
+                issuedAt: new Date().toISOString(),
+            };
+            return {
+                token: sealJson(payload, key),
+                title,
+                username: payload.username,
+                vaultName,
+                itemTitle: item.title,
+                fieldLabel,
+                fieldId: field.id,
+                fieldType: field.type,
+                fieldPurpose: field.purpose,
+                kind,
+                category: item.category,
+                sites,
+            };
+        });
+    }
+    async mapWithConcurrency(items, concurrency, mapper) {
+        const results = [];
+        let index = 0;
+        const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+            while (index < items.length) {
+                const current = index;
+                index += 1;
+                results[current] = await mapper(items[current]);
+            }
+        });
+        await Promise.all(workers);
+        return results;
     }
     async run(args, options = {}) {
         const finalArgs = this.withGlobalArgs(args);
@@ -251,6 +315,68 @@ function extractSites(item) {
     ].filter((value) => Boolean(value));
     return formatSites(raw);
 }
+function approvableFields(item) {
+    const category = normalizeCategory(item.category);
+    const fields = item.fields || [];
+    const candidates = fields.flatMap((field) => {
+        const kind = classifyField(field, category);
+        return kind ? [{ field, kind }] : [];
+    });
+    if (candidates.length)
+        return candidates;
+    if (category === "LOGIN" || category === "PASSWORD") {
+        return [{ field: { id: "password", label: "password", purpose: "PASSWORD", type: "CONCEALED" }, kind: "password" }];
+    }
+    if (category === "API_CREDENTIAL") {
+        return [{ field: { id: "credential", label: "credential", type: "CONCEALED" }, kind: "api_credential" }];
+    }
+    if (category === "SECURE_NOTE") {
+        return [{ field: { id: "notesPlain", label: "notes", purpose: "NOTES", type: "STRING" }, kind: "secure_note" }];
+    }
+    return [];
+}
+function classifyField(field, category) {
+    const id = normalizeField(field.id);
+    const label = normalizeField(field.label);
+    const type = normalizeField(field.type);
+    const purpose = normalizeField(field.purpose);
+    if (purpose === "PASSWORD" || id === "password")
+        return "password";
+    if (purpose === "USERNAME" || id === "username")
+        return "username";
+    if (type === "OTP" || id.includes("otp") || label.includes("one-time"))
+        return "otp";
+    if (category === "API_CREDENTIAL" && id === "credential")
+        return "api_credential";
+    if (category === "API_CREDENTIAL" && (id === "hostname" || id === "type"))
+        return "text";
+    if (category === "CREDIT_CARD" && id === "cardholder")
+        return "credit_card_name";
+    if (category === "CREDIT_CARD" && id === "ccnum")
+        return "credit_card_number";
+    if (category === "CREDIT_CARD" && id === "cvv")
+        return "credit_card_cvv";
+    if (category === "CREDIT_CARD" && id === "pin")
+        return "credit_card_pin";
+    if (category === "CREDIT_CARD" && id === "expiry")
+        return "credit_card_expiry";
+    if (category === "SECURE_NOTE" && id === "notesPlain".toLowerCase())
+        return "secure_note";
+    if (type === "SSHKEY" || id === "private_key")
+        return "ssh_private_key";
+    if (id.includes("license") || label.includes("license key"))
+        return "license_key";
+    if (type === "CONCEALED" || type === "CREDIT_CARD_NUMBER")
+        return "custom";
+    return null;
+}
+function findUsername(item) {
+    const field = (item.fields || []).find((candidate) => {
+        return normalizeField(candidate.purpose) === "USERNAME" || normalizeField(candidate.id) === "username";
+    });
+    const value = typeof field?.value === "string" ? field.value.trim() : "";
+    return value || undefined;
+}
 function itemMatchesQuery(item, query) {
     const haystack = [
         item.title,
@@ -274,6 +400,82 @@ function createCategory(category) {
         return value;
     if (value === "secure note")
         return "secure-note";
+    if (value === "api credential")
+        return "api-credential";
+    if (value === "credit card")
+        return "credit-card";
     return value.replaceAll("_", "-").replaceAll(" ", "-");
+}
+function createItemTemplate(input) {
+    const category = templateCategory(input.category);
+    const template = {
+        title: input.title,
+        category,
+        fields: [],
+    };
+    if (input.url) {
+        template.urls = [{ href: input.url, primary: true }];
+    }
+    const fields = template.fields;
+    if (input.category === "login") {
+        fields.push(field("username", "STRING", input.username || "", "username", "USERNAME"));
+        fields.push(field("password", "CONCEALED", input.password || "", "password", "PASSWORD"));
+        fields.push(field("notesPlain", "STRING", input.notes || "", "notesPlain", "NOTES"));
+    }
+    else if (input.category === "password") {
+        fields.push(field("password", "CONCEALED", input.password || "", "password", "PASSWORD"));
+        fields.push(field("notesPlain", "STRING", input.notes || "", "notesPlain", "NOTES"));
+    }
+    else if (input.category === "api_credential") {
+        fields.push(field("notesPlain", "STRING", input.notes || "", "notesPlain", "NOTES"));
+        fields.push(field("username", "STRING", input.username || "", "username"));
+        fields.push(field("credential", "CONCEALED", input.credential || input.password || "", "credential"));
+        fields.push(field("hostname", "STRING", input.hostname || input.url || "", "hostname"));
+    }
+    else if (input.category === "secure_note") {
+        fields.push(field("notesPlain", "STRING", input.notes || input.credential || input.password || "", "notesPlain", "NOTES"));
+    }
+    else if (input.category === "credit_card") {
+        fields.push(field("notesPlain", "STRING", input.notes || "", "notesPlain", "NOTES"));
+        fields.push(field("cardholder", "STRING", input.cardholderName || "", "cardholder name"));
+        fields.push(field("ccnum", "CREDIT_CARD_NUMBER", input.cardNumber || "", "number"));
+        fields.push(field("cvv", "CONCEALED", input.verificationNumber || "", "verification number"));
+        fields.push(field("expiry", "MONTH_YEAR", input.expiry || "", "expiry date"));
+        fields.push({
+            ...field("pin", "CONCEALED", input.pin || "", "PIN"),
+            section: { id: "details", label: "Additional Details" },
+        });
+    }
+    return template;
+}
+function field(id, type, value, label, purpose) {
+    return {
+        id,
+        type,
+        ...(purpose ? { purpose } : {}),
+        label,
+        value,
+    };
+}
+function templateCategory(category) {
+    if (category === "api_credential")
+        return "API_CREDENTIAL";
+    if (category === "secure_note")
+        return "SECURE_NOTE";
+    if (category === "credit_card")
+        return "CREDIT_CARD";
+    return category.toUpperCase();
+}
+function buildSecretRef(vault, item, fieldName) {
+    return `op://${encodeSecretRefPart(vault)}/${encodeSecretRefPart(item)}/${encodeSecretRefPart(fieldName)}`;
+}
+function encodeSecretRefPart(value) {
+    return encodeURIComponent(value).replaceAll("%20", " ");
+}
+function normalizeCategory(value) {
+    return (value || "").trim().replaceAll(" ", "_").replaceAll("-", "_").toUpperCase();
+}
+function normalizeField(value) {
+    return (value || "").trim().toLowerCase();
 }
 //# sourceMappingURL=opCli.js.map

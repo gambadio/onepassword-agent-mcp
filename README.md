@@ -4,9 +4,9 @@
 
 # 1Password Agent MCP
 
-Local MCP access to approved 1Password logins for AI agents.
+Local MCP access to approved 1Password items and profile data for AI agents.
 
-Agents receive encrypted local handles, not plaintext passwords. At the moment of copy or paste, the MCP resolves the secret locally through the 1Password CLI and sends it to the OS clipboard or active app.
+Agents receive encrypted local handles, not plaintext 1Password secrets. At the moment of copy or paste, the MCP resolves the selected field locally through the 1Password CLI and sends it to the OS clipboard or active app.
 
 The repo contains no personal 1Password data. Every install connects to that user's own 1Password CLI and local approval policy.
 
@@ -17,12 +17,12 @@ The repo contains no personal 1Password data. Every install connects to that use
 ## How It Works
 
 1. Create a dedicated 1Password vault named `MCPVAULT`.
-2. Copy or move selected logins from your normal vaults into `MCPVAULT`.
-3. Approve each `MCPVAULT` login for specific websites.
+2. Copy or move selected logins, passwords, API credentials, credit cards, secure notes, or other supported items from your normal vaults into `MCPVAULT`.
+3. Approve exact `MCPVAULT` fields for specific websites.
 4. Connect Claude Code, Codex, GitHub Copilot, or another MCP client.
-5. The agent can paste approved passwords without seeing the plaintext.
+5. The agent can paste approved fields without seeing the plaintext in its response.
 
-The MCP tools only expose approved items from the configured agent vault.
+The MCP tools only expose approved fields from the configured agent vault. The local profile-data section can also expose user-entered values such as email, phone, address, name, and company.
 
 ## Quick Start
 
@@ -109,14 +109,15 @@ Enable the 1Password desktop integration:
 The console is a small workbench:
 
 - **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
-- **Vault Workbench** lets you drag a source login into the agent vault.
+- **Vault Workbench** lets you drag a source item into the agent vault.
 - **Choose From 1Password** searches your normal vaults.
-- **Approve Agent Items** shows only items already in `MCPVAULT`.
+- **Approve Agent Items** shows approvable fields already in `MCPVAULT`.
 - **Allowed For Agents** is the final allow list MCP clients can use.
+- **Profile Data For Agents** stores profile values agents may read directly, such as email, phone, address, name, or company.
 
 ![Drag to copy](docs/screenshots/drag-to-copy.svg)
 
-Copy is the safe default. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
+Copy is the safe default. Copy now uses 1Password's revealed JSON clone pipe so the destination item keeps the original fields. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
 
 Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
 
@@ -239,12 +240,15 @@ This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items.
 
 ## MCP Tools
 
-- `onepassword_status`: check CLI, `MCPVAULT`, and local policy status.
-- `find_passwords_for_site`: return approved encrypted handles for a website.
-- `list_approved_passwords`: list approved handles and allowed sites.
-- `copy_password`: resolve a handle and copy the password to the clipboard.
-- `paste_password`: resolve a handle, copy it, paste into the active app, and return no plaintext.
-- `clear_password_clipboard`: clear the clipboard.
+- `onepassword_status`: check CLI, `MCPVAULT`, local approvals, profile data, and settings.
+- `find_secrets_for_site`: return approved encrypted handles for a website.
+- `list_approved_secrets`: list approved handles and allowed sites.
+- `copy_secret`: resolve a handle and copy the selected field to the clipboard.
+- `paste_secret`: resolve a handle, copy it, paste into the active app, and return no plaintext.
+- `clear_secret_clipboard`: clear the clipboard.
+- `save_secret_item`: save a new login, password, API credential, secure note, or credit card into `MCPVAULT` when the local save setting is enabled.
+- `get_profile_data`: return user-defined profile data allowed for the current site.
+- `find_passwords_for_site`, `list_approved_passwords`, `copy_password`, `paste_password`, and `clear_password_clipboard`: compatibility aliases.
 - `admin_ui_info`: return the approval console URL.
 
 ## Security Model
@@ -252,18 +256,20 @@ This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items.
 Protected:
 
 - Passwords are not stored by this project.
-- MCP tools never return plaintext passwords.
+- MCP copy/paste tools never return plaintext 1Password secret fields.
 - Handles and stored 1Password secret references are encrypted locally.
 - Disabled or deleted approvals invalidate old handles.
 - Allowed-site checks run again at copy and paste time.
 - The MCP server only lists and resolves approvals from the configured agent vault.
+- Agent-created items are opt-in, and are saved only into the configured agent vault.
 
 Still sensitive:
 
-- The OS clipboard briefly contains the plaintext password.
-- The active app receives the password when paste is triggered.
+- The OS clipboard briefly contains the plaintext field value.
+- The active app receives the field value when paste is triggered.
 - A local process with clipboard access may observe copied secrets.
 - With desktop CLI integration, the local 1Password CLI session may have broader vault access than the MCP exposes.
+- `get_profile_data` returns plaintext profile values you explicitly added in the admin UI.
 
 For the strictest boundary, use a 1Password service account scoped only to `MCPVAULT`.
 

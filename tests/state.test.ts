@@ -22,6 +22,7 @@ test("load repairs a blank agent vault name", async () => {
         clipboardClearSeconds: 20,
         autoPasteByDefault: true,
         allowPasteWithoutSite: false,
+        allowAgentItemCreate: false,
         defaultVault: "",
         mcpVaultName: "",
       },
@@ -31,6 +32,7 @@ test("load repairs a blank agent vault name", async () => {
 
     const file = await new StateStore().load();
     assert.equal(file.settings.mcpVaultName, "MCPVAULT");
+    assert.deepEqual(file.profile, []);
   });
 });
 

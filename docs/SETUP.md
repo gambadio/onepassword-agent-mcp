@@ -99,25 +99,25 @@ If it does not exist, click **Create MCPVAULT** in the console.
 
 This creates an empty 1Password vault. It does not copy or approve anything yet.
 
-## 7. Copy Or Move Logins Into MCPVAULT
+## 7. Copy Or Move Items Into MCPVAULT
 
 ![Vault workbench](screenshots/mcpvault-workbench.svg)
 
 Use **Choose From 1Password**:
 
 1. Select a source vault.
-2. Search by item title, website, or account label.
-3. Drag a login to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+2. Search by item title, website, category, or account label.
+3. Drag an item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
 
 Copy is safest because the original item stays where it is. Move removes the item from the source vault and creates a new item in `MCPVAULT`.
 
-## 8. Approve Sites
+## 8. Approve Fields And Sites
 
 ![Approve sites](screenshots/approve-sites.svg)
 
 Use **Approve Agent Items**:
 
-1. Find the copied or moved login in `MCPVAULT`.
+1. Find the copied or moved item field in `MCPVAULT`.
 2. Enter allowed sites, such as `github.com, *.github.com`.
 3. Click **Approve**.
 
@@ -125,16 +125,22 @@ Leave allowed sites blank when an entry may be used on all URLs.
 
 Approved entries appear under **Allowed For Agents**. Agents can use only enabled approvals.
 
-## 9. Test With An Agent
+## 9. Add Optional Profile Data
+
+Use **Profile Data For Agents** to define email, phone, address, name, company, username, or custom text values that agents may retrieve directly.
+
+Profile data is local to this app. It is not read from 1Password. Blank allowed sites means a profile value may be returned for any site.
+
+## 10. Test With An Agent
 
 Ask the agent to:
 
 1. Open a site you approved.
-2. Call `find_passwords_for_site` with the current URL.
-3. Click the password field.
-4. Call `paste_password` with the encrypted handle and `expectedSite`.
+2. Call `find_secrets_for_site` with the current URL.
+3. Click the field that should receive the value.
+4. Call `paste_secret` with the encrypted handle and `expectedSite`.
 
-The agent should not receive the plaintext password.
+The agent should not receive the plaintext 1Password secret field.
 
 ## Update
 

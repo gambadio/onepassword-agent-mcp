@@ -69,6 +69,7 @@ export async function createAdminApp() {
                 clipboardClearSeconds: numberValue(patch.clipboardClearSeconds, file.settings.clipboardClearSeconds, 1, 300),
                 autoPasteByDefault: booleanValue(patch.autoPasteByDefault, file.settings.autoPasteByDefault),
                 allowPasteWithoutSite: booleanValue(patch.allowPasteWithoutSite, file.settings.allowPasteWithoutSite),
+                allowAgentItemCreate: booleanValue(patch.allowAgentItemCreate, file.settings.allowAgentItemCreate),
             };
             file.audit.unshift({
                 id: `audit_${Date.now()}`,
@@ -130,6 +131,36 @@ export async function createAdminApp() {
         await policyService.deleteGrant(req.params.id);
         res.status(204).send();
     });
+    app.get("/api/profile", async (_req, res) => {
+        res.json(await policyService.listProfileEntries());
+    });
+    app.post("/api/profile", async (req, res) => {
+        const entry = await policyService.createProfileEntry({
+            label: requireString(req.body.label, "label"),
+            kind: profileKind(req.body.kind),
+            value: requireString(req.body.value, "value"),
+            sites: requireSites(req.body.sites || []),
+            enabled: req.body.enabled ?? true,
+            note: optionalString(req.body.note),
+        });
+        res.status(201).json(entry);
+    });
+    app.patch("/api/profile/:id", async (req, res) => {
+        const patch = req.body;
+        const entry = await policyService.updateProfileEntry(req.params.id, {
+            label: optionalString(patch.label),
+            kind: typeof patch.kind === "string" ? profileKind(patch.kind) : undefined,
+            value: optionalString(patch.value),
+            sites: Array.isArray(patch.sites) ? patch.sites.map(String).map((site) => site.trim()).filter(Boolean) : undefined,
+            enabled: typeof patch.enabled === "boolean" ? patch.enabled : undefined,
+            note: optionalString(patch.note),
+        });
+        res.json(entry);
+    });
+    app.delete("/api/profile/:id", async (req, res) => {
+        await policyService.deleteProfileEntry(req.params.id);
+        res.status(204).send();
+    });
     app.get("/api/op/candidates", async (req, res) => {
         const file = await store.load();
         const key = await loadOrCreateKey();
@@ -138,6 +169,7 @@ export async function createAdminApp() {
             vault: optionalString(req.query.vault) || file.settings.defaultVault,
             limit: Number(req.query.limit || 50),
             query: optionalString(req.query.q),
+            mode: req.query.mode === "primary" ? "primary" : "all",
         });
         res.json(candidates);
     });
@@ -289,6 +321,19 @@ function requireSites(value) {
     if (!Array.isArray(value))
         throw new Error("sites must be an array.");
     return value.map(String).map((site) => site.trim()).filter(Boolean);
+}
+function profileKind(value) {
+    const kind = typeof value === "string" ? value.trim().toLowerCase() : "custom";
+    if (kind === "name" ||
+        kind === "email" ||
+        kind === "phone" ||
+        kind === "address" ||
+        kind === "company" ||
+        kind === "username" ||
+        kind === "custom") {
+        return kind;
+    }
+    return "custom";
 }
 function describeMcpVault(file, vaults) {
     const vault = findVault(vaults, file.settings.mcpVaultName);

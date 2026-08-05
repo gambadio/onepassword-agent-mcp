@@ -6,8 +6,10 @@ const mcpCandidatesEl = document.querySelector("#mcpCandidates");
 const sourceSummary = document.querySelector("#sourceSummary");
 const mcpSummary = document.querySelector("#mcpSummary");
 const auditEl = document.querySelector("#audit");
+const profileEntriesEl = document.querySelector("#profileEntries");
 const settingsForm = document.querySelector("#settingsForm");
 const manualForm = document.querySelector("#manualForm");
+const profileForm = document.querySelector("#profileForm");
 const sourceSearchInput = document.querySelector("#sourceSearchInput");
 const sourceVaultSelect = document.querySelector("#sourceVaultSelect");
 const sourceLimitInput = document.querySelector("#sourceLimitInput");
@@ -54,6 +56,7 @@ mcpSearchInput.addEventListener("input", () => {
 });
 settingsForm.addEventListener("submit", saveSettings);
 manualForm.addEventListener("submit", addManualGrant);
+profileForm.addEventListener("submit", addProfileEntry);
 
 await runAction(async () => {
   await refresh();
@@ -61,12 +64,13 @@ await runAction(async () => {
 }, { quiet: true });
 
 async function refresh() {
-  const [status, grants] = await Promise.all([api("/api/status"), api("/api/grants")]);
+  const [status, grants, profile] = await Promise.all([api("/api/status"), api("/api/grants"), api("/api/profile")]);
   currentStatus = status;
   renderStatus(status);
   renderSettings(status.settings);
   renderVaultOptions(status.cli?.vaults || [], status.settings.mcpVaultName);
   renderGrants(grants);
+  renderProfile(profile);
   renderAudit(status.audit);
 }
 
@@ -95,7 +99,7 @@ function renderStatus(status) {
   } else if (cli.authError) {
     mcpVaultStatus.textContent = "1Password CLI cannot list vaults. Open and unlock 1Password, then confirm CLI integration is enabled.";
   } else if (cli.installed && cli.authenticated) {
-    mcpVaultStatus.textContent = `${mcpVault.name} does not exist yet. Create it before approving logins for agents.`;
+    mcpVaultStatus.textContent = `${mcpVault.name} does not exist yet. Create it before approving items for agents.`;
   } else {
     mcpVaultStatus.textContent = "Sign in to 1Password CLI before creating or searching the agent vault.";
   }
@@ -107,6 +111,7 @@ function renderSettings(settings) {
   settingsForm.account.value = settings.account || "";
   settingsForm.clipboardClearSeconds.value = settings.clipboardClearSeconds || 20;
   settingsForm.allowPasteWithoutSite.checked = Boolean(settings.allowPasteWithoutSite);
+  settingsForm.allowAgentItemCreate.checked = Boolean(settings.allowAgentItemCreate);
 }
 
 function renderVaultOptions(vaults, mcpVaultName) {
@@ -142,7 +147,7 @@ function renderGrants(grants) {
   grantCount.textContent = `${grants.length} total`;
   grantsEl.innerHTML = "";
   if (!grants.length) {
-    grantsEl.append(empty("No agent approvals yet. Copy a login into MCPVAULT, then approve it. Blank allowed sites means all sites."));
+    grantsEl.append(empty("No agent approvals yet. Copy an item into MCPVAULT, then approve fields. Blank allowed sites means all sites."));
     return;
   }
   const template = document.querySelector("#grantTemplate");
@@ -152,6 +157,7 @@ function renderGrants(grants) {
     node.querySelector(".meta").textContent = [
       grant.username ? `user: ${grant.username}` : "",
       grant.vaultName ? `vault: ${grant.vaultName}` : "",
+      grant.kind ? `kind: ${formatKind(grant.kind)}` : "",
       `field: ${grant.fieldLabel}`,
     ].filter(Boolean).join(" | ");
     const sitesInput = node.querySelector(".sitesInput");
@@ -206,6 +212,7 @@ async function loadSourceCandidates() {
   const params = new URLSearchParams({
     vault,
     limit: sourceLimitInput.value || "100",
+    mode: "primary",
   });
   const query = sourceSearchInput.value.trim();
   if (query) params.set("q", query);
@@ -221,7 +228,7 @@ function renderSourceCandidates(result) {
   sourceCandidatesEl.innerHTML = "";
   sourceSummary.textContent = `${result.shown} shown of ${result.matched} matches (${result.total} total in this vault).`;
   if (!candidates.length) {
-    sourceCandidatesEl.append(empty("No matching Login or Password items found in this source vault."));
+    sourceCandidatesEl.append(empty("No matching items with usable fields found in this source vault."));
     return;
   }
   const template = document.querySelector("#sourceCandidateTemplate");
@@ -236,8 +243,9 @@ function renderSourceCandidates(result) {
     article.querySelector("h3").textContent = candidate.title;
     article.querySelector(".meta").textContent = [
       candidate.vaultName ? `vault: ${candidate.vaultName}` : "",
+      candidate.category ? `category: ${formatCategory(candidate.category)}` : "",
       candidate.sites.length ? `site: ${candidate.sites.join(", ")}` : "no website saved",
-      `field: ${candidate.fieldLabel}`,
+      candidate.fieldLabel ? `primary field: ${candidate.fieldLabel}` : "",
     ].filter(Boolean).join(" | ");
     article.addEventListener("click", (event) => {
       if (event.target instanceof Element && event.target.closest("button")) return;
@@ -263,7 +271,7 @@ function renderSourceCandidates(result) {
     node.querySelector(".moveBtn").addEventListener("click", () => runAction(async () => {
       selectSourceCandidate(dragId);
       const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
-      const ok = window.confirm(`Move "${candidate.title}" into ${name}?\n\n1Password will remove it from the source vault and create a new item in ${name}.`);
+      const ok = window.confirm(`Move "${candidate.itemTitle || candidate.title}" into ${name}?\n\n1Password will remove it from the source vault and create a new item in ${name}.`);
       if (!ok) return;
       await transferCandidate(candidate, "move");
     }));
@@ -277,18 +285,18 @@ function selectSourceCandidate(dragId) {
     item.classList.toggle("selected", item.dataset.dragId === dragId);
   }
   const candidate = sourceCandidateMap.get(dragId);
-  if (candidate) setMessage(`Selected ${candidate.title}. Drop it into MCPVAULT or click a drop target.`);
+  if (candidate) setMessage(`Selected ${candidate.itemTitle || candidate.title}. Drop it into MCPVAULT or click a drop target.`);
 }
 
 async function transferSelectedCandidate(mode = "copy") {
   const candidate = sourceCandidateMap.get(selectedCandidateId);
   if (!candidate) {
-    setMessage("Select or drag a source login first.", true);
+    setMessage("Select or drag a source item first.", true);
     return;
   }
   if (mode === "move") {
     const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
-    const ok = window.confirm(`Move "${candidate.title}" into ${name}?\n\n1Password will remove it from the source vault and create a new item in ${name}.`);
+    const ok = window.confirm(`Move "${candidate.itemTitle || candidate.title}" into ${name}?\n\n1Password will remove it from the source vault and create a new item in ${name}.`);
     if (!ok) return;
   }
   await transferCandidate(candidate, mode);
@@ -302,7 +310,7 @@ async function transferCandidate(candidate, mode) {
   });
   await refresh();
   await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
-  setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.title} into ${name}.`);
+  setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} into ${name}.`);
 }
 
 function onDropTargetDragOver(event) {
@@ -345,7 +353,7 @@ async function loadMcpCandidates() {
     return;
   }
   if (!mcpVault?.exists) {
-    mcpCandidatesEl.append(empty(`Create ${name} first, then copy logins into it.`));
+    mcpCandidatesEl.append(empty(`Create ${name} first, then copy items into it.`));
     return;
   }
   mcpCandidatesEl.append(empty(`Searching ${name}...`));
@@ -353,6 +361,7 @@ async function loadMcpCandidates() {
   const params = new URLSearchParams({
     vault: mcpVault.name || name,
     limit: mcpLimitInput.value || "100",
+    mode: "all",
   });
   const query = mcpSearchInput.value.trim();
   if (query) params.set("q", query);
@@ -366,7 +375,7 @@ function renderMcpCandidates(result) {
   mcpCandidatesEl.innerHTML = "";
   mcpSummary.textContent = `${result.shown} shown of ${result.matched} matches (${result.total} total in agent vault).`;
   if (!candidates.length) {
-    mcpCandidatesEl.append(empty("No matching Login or Password items found in the agent vault."));
+    mcpCandidatesEl.append(empty("No matching approvable fields found in the agent vault."));
     return;
   }
   const template = document.querySelector("#mcpCandidateTemplate");
@@ -375,6 +384,8 @@ function renderMcpCandidates(result) {
     node.querySelector("h3").textContent = candidate.title;
     node.querySelector(".meta").textContent = [
       candidate.vaultName ? `vault: ${candidate.vaultName}` : "",
+      candidate.category ? `category: ${formatCategory(candidate.category)}` : "",
+      candidate.kind ? `kind: ${formatKind(candidate.kind)}` : "",
       candidate.sites.length ? `site: ${candidate.sites.join(", ")}` : "blank allowed sites means all sites",
       `field: ${candidate.fieldLabel}`,
     ].filter(Boolean).join(" | ");
@@ -395,7 +406,7 @@ function renderMcpCandidates(result) {
     }));
     node.querySelector(".deleteItemBtn").addEventListener("click", () => runAction(async () => {
       const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
-      const ok = window.confirm(`Delete "${candidate.title}" from ${name}?\n\n1Password will move it to Recently Deleted. Any local agent approval for this item will also be removed.`);
+      const ok = window.confirm(`Delete "${candidate.itemTitle || candidate.title}" from ${name}?\n\n1Password will move it to Recently Deleted. Any local agent approval for this item will also be removed.`);
       if (!ok) return;
       await api("/api/op/mcp-vault/items/delete", {
         method: "POST",
@@ -403,9 +414,53 @@ function renderMcpCandidates(result) {
       });
       await refresh();
       await loadMcpCandidates();
-      setMessage(`Deleted ${candidate.title} from ${name}.`);
+      setMessage(`Deleted ${candidate.itemTitle || candidate.title} from ${name}.`);
     }));
     mcpCandidatesEl.append(node);
+  }
+}
+
+function renderProfile(entries) {
+  profileEntriesEl.innerHTML = "";
+  if (!entries.length) {
+    profileEntriesEl.append(empty("No profile data added yet. Add only details you want agents to read directly."));
+    return;
+  }
+  const template = document.querySelector("#profileTemplate");
+  for (const entry of entries) {
+    const node = template.content.cloneNode(true);
+    node.querySelector("h3").textContent = entry.label;
+    node.querySelector(".meta").textContent = [
+      `type: ${formatKind(entry.kind)}`,
+      entry.sites.length ? `sites: ${entry.sites.join(", ")}` : "blank allowed sites means all sites",
+    ].join(" | ");
+    const valueInput = node.querySelector(".profileValueInput");
+    const sitesInput = node.querySelector(".profileSitesInput");
+    const enabledInput = node.querySelector(".profileEnabledInput");
+    valueInput.value = entry.value;
+    sitesInput.value = entry.sites.join(", ");
+    sitesInput.placeholder = "blank means all sites";
+    enabledInput.checked = entry.enabled;
+    node.querySelector(".profileSaveBtn").addEventListener("click", () => runAction(async () => {
+      await api(`/api/profile/${entry.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          value: valueInput.value,
+          sites: splitCsv(sitesInput.value),
+          enabled: enabledInput.checked,
+        }),
+      });
+      await refresh();
+      setMessage(`Saved ${entry.label}.`);
+    }));
+    node.querySelector(".profileDeleteBtn").addEventListener("click", () => runAction(async () => {
+      const ok = window.confirm(`Delete profile field "${entry.label}"?\n\nAgents will no longer be able to retrieve it.`);
+      if (!ok) return;
+      await api(`/api/profile/${entry.id}`, { method: "DELETE" });
+      await refresh();
+      setMessage(`Deleted ${entry.label}.`);
+    }));
+    profileEntriesEl.append(node);
   }
 }
 
@@ -433,11 +488,31 @@ async function saveSettings(event) {
         account: settingsForm.account.value,
         clipboardClearSeconds: Number(settingsForm.clipboardClearSeconds.value),
         allowPasteWithoutSite: settingsForm.allowPasteWithoutSite.checked,
+        allowAgentItemCreate: settingsForm.allowAgentItemCreate.checked,
       }),
     });
     await refresh();
     await loadMcpCandidates();
     setMessage("Saved local settings.");
+  });
+}
+
+async function addProfileEntry(event) {
+  event.preventDefault();
+  await runAction(async () => {
+    const data = new FormData(profileForm);
+    await api("/api/profile", {
+      method: "POST",
+      body: JSON.stringify({
+        kind: data.get("kind"),
+        label: data.get("label"),
+        value: data.get("value"),
+        sites: splitCsv(String(data.get("sites") || "")),
+      }),
+    });
+    profileForm.reset();
+    await refresh();
+    setMessage("Added profile data.");
   });
 }
 
@@ -510,6 +585,14 @@ function splitCsv(value) {
 
 function normalize(value) {
   return (value || "").trim().toLowerCase();
+}
+
+function formatKind(value) {
+  return String(value || "custom").replaceAll("_", " ");
+}
+
+function formatCategory(value) {
+  return String(value || "").replaceAll("_", " ").toLowerCase();
 }
 
 function empty(text) {

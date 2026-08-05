@@ -1,6 +1,6 @@
 # Security Notes
 
-1Password Agent MCP keeps plaintext passwords out of model responses. It does not make the local machine immune to malicious software or a malicious MCP host.
+1Password Agent MCP keeps plaintext 1Password secret fields out of model responses. It does not make the local machine immune to malicious software or a malicious MCP host.
 
 ## Core Boundary
 
@@ -10,7 +10,7 @@ The MCP is built around one dedicated 1Password vault:
 MCPVAULT
 ```
 
-The admin console can help you search your normal vaults and copy or move selected logins into `MCPVAULT`. The MCP tools only list and resolve approvals that point at the configured agent vault.
+The admin console can help you search your normal vaults and copy or move selected items into `MCPVAULT`. The MCP tools only list and resolve approvals that point at the configured agent vault.
 
 With 1Password desktop CLI integration, the local `op` session may technically have access to every vault your 1Password user can access. This app enforces the `MCPVAULT` boundary in code.
 
@@ -27,33 +27,35 @@ The package does not install a launch agent, daemon, service, startup item, brow
 
 ## What Is Protected
 
-- Passwords are not stored by this project.
-- MCP tools never return plaintext passwords.
+- Passwords and other 1Password secret fields are not stored by this project.
+- MCP copy/paste tools never return plaintext 1Password secret fields.
 - Approved handles are encrypted with a local AES-256-GCM key in `~/.onepassword-mcp/key.bin`.
 - The encrypted handle is rechecked against the current local grant before each copy or paste.
 - Disabled or deleted grants invalidate old handles.
 - Allowed-site checks happen at paste time.
 - Grants outside the configured agent vault are ignored and cannot be resolved.
 - A blank allowed-sites list means the grant may be used for all URLs.
+- Agent-created items are opt-in, and are saved only into the configured agent vault.
+- Profile data is stored locally and returned in plaintext only through the explicit `get_profile_data` tool.
 
 ## What Is Still Sensitive
 
-- The OS clipboard briefly contains the plaintext password during copy/paste.
+- The OS clipboard briefly contains the plaintext field value during copy/paste.
 - Any local process with clipboard access might read it during that short window.
 - The active app receives the password when paste is triggered.
 - The admin UI can create vaults, transfer items, and create or delete grants, so keep it bound to `127.0.0.1`.
 - If you set `allowPasteWithoutSite`, an agent can paste an approved handle without proving the target site.
-- If the wrong field is focused, `paste_password` will paste into that field. Browser-control agents should click the password input first and pass the current URL as `expectedSite`.
+- If the wrong field is focused, `paste_secret` will paste into that field. Browser-control agents should click the intended input first and pass the current URL as `expectedSite`.
 
 ## Copy Versus Move
 
 Copy duplicates a source item into `MCPVAULT` through a direct 1Password CLI pipeline:
 
 ```bash
-op item get "<item>" --format json | op item create --category login --vault MCPVAULT -
+op item get "<item>" --format json --reveal | op item create --vault MCPVAULT -
 ```
 
-The app does not log or store that JSON.
+The `--reveal` flag is required so the duplicate keeps the original secret field values. The app pipes that JSON directly from one 1Password CLI process into another; it does not log or store that JSON.
 
 Move uses 1Password's native move command:
 
@@ -69,13 +71,13 @@ op item move "<item>" --current-vault "<source>" --destination-vault MCPVAULT
 - Use narrow site patterns.
 - Leave allowed sites blank only when the item is intentionally URL-agnostic.
 - Keep clipboard clearing at 20 seconds or less.
-- Put only agent-usable logins in `MCPVAULT`.
+- Put only agent-usable items in `MCPVAULT`.
 - Use copy before move when you are unsure.
 - Prefer a service account scoped only to `MCPVAULT` for headless or production use.
 
 ## Why Secret References
 
-The local policy stores encrypted 1Password secret references, not passwords. A secret reference looks like:
+The local policy stores encrypted 1Password secret references, not secret values. A secret reference looks like:
 
 ```text
 op://MCPVAULT/ExampleLogin/password
@@ -87,8 +89,18 @@ At paste time the server calls:
 op read --no-newline "op://MCPVAULT/ExampleLogin/password"
 ```
 
-This gets the latest password from 1Password and avoids keeping password material in project files.
+This gets the latest field value from 1Password and avoids keeping 1Password secret material in project files.
 
-## Importer Limitation
+## Supported Item Types
 
-The search view uses `op item list --long` and assumes the standard `password` field for Login/Password items. For custom fields, use the expert manual secret-reference form and point it at an item in `MCPVAULT`.
+The approval view can expose approvable fields from logins, passwords, API credentials, credit cards, secure notes, SSH keys, and other items with concealed or known sensitive fields. For unusual custom fields, use the expert manual secret-reference form and point it at an item in `MCPVAULT`.
+
+## Agent-Created Items
+
+The `save_secret_item` MCP tool can create new Login, Password, API Credential, Secure Note, and Credit Card items in `MCPVAULT` after **Allow agents to save new items into MCPVAULT** is enabled in local settings. Sensitive values are sent to `op item create` through stdin as a JSON template, not command arguments.
+
+Keep this off unless you want connected MCP clients to be able to create new items in the agent vault.
+
+## Profile Data
+
+Profile data such as email address, phone number, mailing address, name, and company is stored in this app's local policy file. It is not fetched from 1Password. The MCP returns those values directly through `get_profile_data`, filtered by each profile entry's allowed-sites list.

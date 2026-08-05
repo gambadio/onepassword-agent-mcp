@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
-  <title id="title">Drag a login into MCPVAULT</title>
-  <desc id="desc">Example showing a source login being dragged to the Copy Into MCPVAULT drop target.</desc>
+  <title id="title">Drag an item into MCPVAULT</title>
+  <desc id="desc">Example showing a source item being dragged to the Copy Into MCPVAULT drop target.</desc>
   <rect width="1120" height="560" fill="#f4f6f8"/>
   <rect x="32" y="32" width="1056" height="496" rx="10" fill="#ffffff" stroke="#d7dee8"/>
-  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Copy without exposing the password</text>
+  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Copy without exposing secrets to the agent</text>
   <text x="56" y="96" fill="#627084" font-family="Arial, sans-serif" font-size="14">Drag from a normal vault. Drop on Copy to leave the original item untouched.</text>
 
   <rect x="56" y="136" width="438" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>

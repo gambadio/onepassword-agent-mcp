@@ -20,6 +20,89 @@ export class PolicyService {
         const grants = await this.listPublicGrants();
         return grants.filter((grant) => grant.enabled && siteMatches(grant.sites, site));
     }
+    async listProfileEntries() {
+        const policy = await this.store.load();
+        return policy.profile;
+    }
+    async findProfileForSite(site) {
+        const policy = await this.store.load();
+        const entries = policy.profile.filter((entry) => {
+            if (!entry.enabled)
+                return false;
+            if (site)
+                return siteMatches(entry.sites, site);
+            return entry.sites.length === 0;
+        });
+        if (entries.length) {
+            await this.store.addAudit({
+                type: "profile.read",
+                site,
+                message: `Returned ${entries.length} profile field${entries.length === 1 ? "" : "s"}${site ? ` for ${site}` : ""}.`,
+            });
+        }
+        return entries;
+    }
+    async createProfileEntry(input) {
+        const now = new Date().toISOString();
+        const entry = {
+            id: randomId("profile"),
+            label: input.label,
+            kind: input.kind,
+            value: input.value,
+            sites: input.sites,
+            enabled: input.enabled ?? true,
+            createdAt: now,
+            updatedAt: now,
+            note: input.note,
+        };
+        await this.store.update((policy) => {
+            policy.profile.push(entry);
+            policy.audit.unshift({
+                id: randomId("audit"),
+                type: "profile.created",
+                message: `Created profile field ${entry.label}`,
+                createdAt: now,
+            });
+            policy.audit = policy.audit.slice(0, 200);
+        });
+        return entry;
+    }
+    async updateProfileEntry(id, patch) {
+        let updated;
+        await this.store.update((policy) => {
+            const entry = policy.profile.find((item) => item.id === id);
+            if (!entry)
+                throw new Error(`Profile field not found: ${id}`);
+            updated = {
+                ...entry,
+                ...patch,
+                sites: patch.sites ?? entry.sites,
+                updatedAt: new Date().toISOString(),
+            };
+            policy.profile = policy.profile.map((item) => (item.id === id ? updated : item));
+            policy.audit.unshift({
+                id: randomId("audit"),
+                type: "profile.updated",
+                message: `Updated profile field ${updated.label}`,
+                createdAt: new Date().toISOString(),
+            });
+            policy.audit = policy.audit.slice(0, 200);
+        });
+        return updated;
+    }
+    async deleteProfileEntry(id) {
+        await this.store.update((policy) => {
+            const entry = policy.profile.find((item) => item.id === id);
+            policy.profile = policy.profile.filter((item) => item.id !== id);
+            policy.audit.unshift({
+                id: randomId("audit"),
+                type: "profile.deleted",
+                message: entry ? `Deleted profile field ${entry.label}` : `Deleted profile field ${id}`,
+                createdAt: new Date().toISOString(),
+            });
+            policy.audit = policy.audit.slice(0, 200);
+        });
+    }
     async createFromCandidate(candidateToken, overrides) {
         const key = await loadOrCreateKey();
         const candidate = openJson(candidateToken, key);
@@ -127,7 +210,7 @@ export class PolicyService {
                 site: expectedSite,
                 message: "Denied paste for missing grant.",
             });
-            throw new Error("This password handle no longer exists.");
+            throw new Error("This secret handle no longer exists.");
         }
         if (!grant.enabled) {
             await this.store.addAudit({
@@ -136,11 +219,11 @@ export class PolicyService {
                 site: expectedSite,
                 message: `Denied paste for disabled grant ${grant.title}.`,
             });
-            throw new Error("This password is disabled in the local policy.");
+            throw new Error("This secret is disabled in the local policy.");
         }
         const savedRef = openJson(grant.encryptedRef, key);
         if (savedRef.secretRef !== payload.secretRef || savedRef.kind !== payload.kind) {
-            throw new Error("This password handle does not match the saved policy.");
+            throw new Error("This secret handle does not match the saved policy.");
         }
         if (!grantTargetsMcpVault(grant, policy.settings.mcpVaultName, savedRef.secretRef)) {
             await this.store.addAudit({

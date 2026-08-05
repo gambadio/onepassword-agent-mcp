@@ -198,7 +198,7 @@ async function doctor(): Promise<void> {
     console.log(`${failures} required check(s) failed.`);
     process.exitCode = 1;
   } else {
-    console.log("Ready. Approve logins in the admin UI, then connect an MCP client.");
+    console.log("Ready. Approve item fields in the admin UI, then connect an MCP client.");
   }
 }
 

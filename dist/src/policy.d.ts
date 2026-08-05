@@ -1,10 +1,22 @@
 import { StateStore } from "./state.js";
-import type { Grant, PublicGrant, SecretKind } from "./types.js";
+import type { Grant, ProfileEntry, ProfileKind, PublicGrant, SecretKind } from "./types.js";
 export declare class PolicyService {
     private readonly store;
     constructor(store?: StateStore);
     listPublicGrants(): Promise<PublicGrant[]>;
     findForSite(site: string): Promise<PublicGrant[]>;
+    listProfileEntries(): Promise<ProfileEntry[]>;
+    findProfileForSite(site?: string): Promise<ProfileEntry[]>;
+    createProfileEntry(input: {
+        label: string;
+        kind: ProfileKind;
+        value: string;
+        sites: string[];
+        enabled?: boolean;
+        note?: string;
+    }): Promise<ProfileEntry>;
+    updateProfileEntry(id: string, patch: Partial<Omit<ProfileEntry, "id" | "createdAt">>): Promise<ProfileEntry>;
+    deleteProfileEntry(id: string): Promise<void>;
     createFromCandidate(candidateToken: string, overrides: Partial<Grant>): Promise<Grant>;
     createManual(input: {
         title: string;
