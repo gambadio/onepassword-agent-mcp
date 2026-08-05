@@ -15,3 +15,8 @@ test("matches wildcard subdomains only", () => {
 test("does not match unrelated domains", () => {
   assert.equal(siteMatches(["github.com"], "https://evilgithub.com"), false);
 });
+
+test("empty patterns and wildcard match all sites", () => {
+  assert.equal(siteMatches([], "https://example.com/login"), true);
+  assert.equal(siteMatches(["*"], "https://anything.example/login"), true);
+});

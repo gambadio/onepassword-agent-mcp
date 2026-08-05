@@ -40,7 +40,7 @@ export class PolicyService {
       itemTitle: candidate.itemTitle,
       fieldLabel: overrides.fieldLabel || candidate.fieldLabel,
       kind: overrides.kind || candidate.kind,
-      sites: overrides.sites?.length ? overrides.sites : candidate.sites,
+      sites: overrides.sites !== undefined ? overrides.sites : candidate.sites,
       enabled: overrides.enabled ?? true,
       note: overrides.note,
       secretRef: candidate.secretRef,
@@ -77,7 +77,7 @@ export class PolicyService {
       updated = {
         ...grant,
         ...patch,
-        sites: patch.sites || grant.sites,
+        sites: patch.sites ?? grant.sites,
         updatedAt: new Date().toISOString(),
       };
       policy.grants = policy.grants.map((item) => (item.id === id ? updated as Grant : item));
@@ -106,6 +106,32 @@ export class PolicyService {
       });
       policy.audit = policy.audit.slice(0, 200);
     });
+  }
+
+  async deleteGrantsForItem(itemId: string, vaultId?: string, vaultName?: string): Promise<number> {
+    let removed = 0;
+    await this.store.update((policy) => {
+      const matches = policy.grants.filter((grant) => {
+        if (grant.itemId !== itemId) return false;
+        if (vaultId && grant.vaultId && grant.vaultId !== vaultId) return false;
+        if (vaultName && grant.vaultName && grant.vaultName !== vaultName) return false;
+        return true;
+      });
+      removed = matches.length;
+      if (!removed) return;
+      policy.grants = policy.grants.filter((grant) => !matches.includes(grant));
+      for (const grant of matches) {
+        policy.audit.unshift({
+          id: randomId("audit"),
+          type: "grant.deleted",
+          grantId: grant.id,
+          message: `Deleted grant ${grant.title} because the 1Password item was deleted.`,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      policy.audit = policy.audit.slice(0, 200);
+    });
+    return removed;
   }
 
   async resolveHandle(handle: string, expectedSite?: string): Promise<{ grant: Grant; secretRef: string }> {
@@ -143,7 +169,7 @@ export class PolicyService {
       throw new Error(`This approval is outside ${policy.settings.mcpVaultName}.`);
     }
     if (expectedSite) {
-      if (!siteMatches(grant.sites, expectedSite)) {
+      if (grant.sites.length && !siteMatches(grant.sites, expectedSite)) {
         await this.store.addAudit({
           type: "secret.denied",
           grantId: grant.id,
@@ -193,9 +219,6 @@ export class PolicyService {
   }): Promise<Grant> {
     if (!input.secretRef.startsWith("op://")) {
       throw new Error("Secret reference must start with op://");
-    }
-    if (!input.sites.length) {
-      throw new Error("At least one allowed site is required.");
     }
     const policy = await this.store.load();
     if (!grantTargetsMcpVault(input, policy.settings.mcpVaultName, input.secretRef)) {

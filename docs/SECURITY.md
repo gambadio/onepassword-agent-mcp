@@ -25,6 +25,7 @@ For the strictest 1Password-side boundary, use a 1Password service account scope
 - Disabled or deleted grants invalidate old handles.
 - Allowed-site checks happen at paste time.
 - Grants outside the configured agent vault are ignored and cannot be resolved.
+- A blank allowed-sites list means the grant may be used for all URLs.
 
 ## What Is Still Sensitive
 
@@ -57,6 +58,7 @@ op item move "<item>" --current-vault "<source>" --destination-vault MCPVAULT
 
 - Keep `allowPasteWithoutSite` off.
 - Use narrow site patterns.
+- Leave allowed sites blank only when the item is intentionally URL-agnostic.
 - Keep clipboard clearing at 20 seconds or less.
 - Put only agent-usable logins in `MCPVAULT`.
 - Use copy before move when you are unsure.

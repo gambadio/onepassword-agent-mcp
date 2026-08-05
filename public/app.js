@@ -142,7 +142,7 @@ function renderGrants(grants) {
   grantCount.textContent = `${grants.length} total`;
   grantsEl.innerHTML = "";
   if (!grants.length) {
-    grantsEl.append(empty("No agent approvals yet. Copy a login into MCPVAULT, then approve it with allowed sites."));
+    grantsEl.append(empty("No agent approvals yet. Copy a login into MCPVAULT, then approve it. Blank allowed sites means all sites."));
     return;
   }
   const template = document.querySelector("#grantTemplate");
@@ -156,6 +156,7 @@ function renderGrants(grants) {
     ].filter(Boolean).join(" | ");
     const sitesInput = node.querySelector(".sitesInput");
     sitesInput.value = grant.sites.join(", ");
+    sitesInput.placeholder = "blank means all sites";
     const enabledInput = node.querySelector(".enabledInput");
     enabledInput.checked = grant.enabled;
     node.querySelector(".saveBtn").addEventListener("click", () => runAction(async () => {
@@ -167,7 +168,7 @@ function renderGrants(grants) {
         }),
       });
       await refresh();
-      setMessage(`Saved ${grant.title}.`);
+      setMessage(`Saved ${grant.title}${splitCsv(sitesInput.value).length ? "." : " for all sites."}`);
     }));
     node.querySelector(".deleteBtn").addEventListener("click", () => runAction(async () => {
       await api(`/api/grants/${grant.id}`, { method: "DELETE" });
@@ -374,18 +375,13 @@ function renderMcpCandidates(result) {
     node.querySelector("h3").textContent = candidate.title;
     node.querySelector(".meta").textContent = [
       candidate.vaultName ? `vault: ${candidate.vaultName}` : "",
-      candidate.sites.length ? `site: ${candidate.sites.join(", ")}` : "add allowed sites before approving",
+      candidate.sites.length ? `site: ${candidate.sites.join(", ")}` : "blank allowed sites means all sites",
       `field: ${candidate.fieldLabel}`,
     ].filter(Boolean).join(" | ");
     const sitesInput = node.querySelector(".sitesInput");
     sitesInput.value = candidate.sites.join(", ");
     node.querySelector(".approveBtn").addEventListener("click", () => runAction(async () => {
       const sites = splitCsv(sitesInput.value);
-      if (!sites.length) {
-        setMessage("Add at least one allowed site before approving.", true);
-        sitesInput.focus();
-        return;
-      }
       await api("/api/grants/import", {
         method: "POST",
         body: JSON.stringify({
@@ -395,7 +391,19 @@ function renderMcpCandidates(result) {
       });
       await refresh();
       await loadMcpCandidates();
-      setMessage(`Approved ${candidate.title} for agents.`);
+      setMessage(`Approved ${candidate.title} for ${sites.length ? sites.join(", ") : "all sites"}.`);
+    }));
+    node.querySelector(".deleteItemBtn").addEventListener("click", () => runAction(async () => {
+      const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
+      const ok = window.confirm(`Delete "${candidate.title}" from ${name}?\n\n1Password will move it to Recently Deleted. Any local agent approval for this item will also be removed.`);
+      if (!ok) return;
+      await api("/api/op/mcp-vault/items/delete", {
+        method: "POST",
+        body: JSON.stringify({ token: candidate.token }),
+      });
+      await refresh();
+      await loadMcpCandidates();
+      setMessage(`Deleted ${candidate.title} from ${name}.`);
     }));
     mcpCandidatesEl.append(node);
   }

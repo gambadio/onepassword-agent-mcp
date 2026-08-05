@@ -18,6 +18,8 @@ export function normalizePattern(pattern) {
     return pattern.trim().toLowerCase().replace(/\/+$/, "");
 }
 export function siteMatches(allowedPatterns, site) {
+    if (!allowedPatterns.length)
+        return true;
     const target = normalizeSite(site);
     if (!target)
         return false;
@@ -28,7 +30,7 @@ export function siteMatches(allowedPatterns, site) {
         if (!pattern)
             return false;
         if (pattern === "*")
-            return false;
+            return true;
         if (pattern.startsWith("*.")) {
             const suffix = pattern.slice(1);
             return targetHost.endsWith(suffix) && targetHost !== suffix.slice(1);

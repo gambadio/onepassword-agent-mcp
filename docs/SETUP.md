@@ -34,7 +34,7 @@ Click **Authorize** only for MCP clients you trust.
 ## 3. Install The MCP
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.2.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
 ```
 
 Run:
@@ -121,6 +121,8 @@ Use **Approve Agent Items**:
 2. Enter allowed sites, such as `github.com, *.github.com`.
 3. Click **Approve**.
 
+Leave allowed sites blank when an entry may be used on all URLs.
+
 Approved entries appear under **Allowed For Agents**. Agents can use only enabled approvals.
 
 ## 9. Test With An Agent
@@ -139,7 +141,7 @@ The agent should not receive the plaintext password.
 Install the latest tagged version again:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.2.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
 ```
 
 Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling the package.

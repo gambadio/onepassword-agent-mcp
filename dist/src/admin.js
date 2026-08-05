@@ -202,6 +202,34 @@ export async function createAdminApp() {
         });
         res.status(201).json({ ok: true, mode });
     });
+    app.post("/api/op/mcp-vault/items/delete", async (req, res) => {
+        const file = await store.load();
+        const key = await loadOrCreateKey();
+        const candidate = openJson(requireString(req.body.token, "token"), key);
+        if (!candidate.itemId) {
+            throw new Error("This item cannot be deleted because 1Password did not return an item ID.");
+        }
+        const op = new OpCli(file.settings);
+        const vaults = await op.listVaults();
+        const mcpVault = describeMcpVault(file, vaults);
+        if (!mcpVault.exists) {
+            throw new Error(`Create ${file.settings.mcpVaultName} first.`);
+        }
+        if (!candidateTargetsVault(candidate, mcpVault)) {
+            throw new Error(`Only items in ${file.settings.mcpVaultName} can be deleted here.`);
+        }
+        const vault = mcpVault.id || mcpVault.name;
+        if (!vault) {
+            throw new Error("1Password did not return enough vault information to delete this item.");
+        }
+        await op.deleteItem({ itemId: candidate.itemId, vault });
+        const deletedGrants = await policyService.deleteGrantsForItem(candidate.itemId, candidate.vaultId, candidate.vaultName);
+        await store.addAudit({
+            type: "item.deleted",
+            message: `Deleted ${candidate.title} from ${file.settings.mcpVaultName}${deletedGrants ? ` and removed ${deletedGrants} approval${deletedGrants === 1 ? "" : "s"}` : ""}.`,
+        });
+        res.json({ ok: true, deletedGrants });
+    });
     app.use(express.static(publicDir()));
     app.get("/{*splat}", (_req, res) => {
         res.sendFile(path.join(publicDir(), "index.html"));
@@ -260,10 +288,7 @@ function booleanValue(value, fallback) {
 function requireSites(value) {
     if (!Array.isArray(value))
         throw new Error("sites must be an array.");
-    const sites = value.map(String).map((site) => site.trim()).filter(Boolean);
-    if (!sites.length)
-        throw new Error("At least one site is required.");
-    return sites;
+    return value.map(String).map((site) => site.trim()).filter(Boolean);
 }
 function describeMcpVault(file, vaults) {
     const vault = findVault(vaults, file.settings.mcpVaultName);

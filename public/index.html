@@ -147,7 +147,7 @@
             </label>
             <label>
               Allowed sites
-              <input name="sites" required placeholder="github.com, *.github.com" />
+              <input name="sites" placeholder="blank means all sites" />
             </label>
             <label>
               Username
@@ -237,10 +237,13 @@
           <p class="meta"></p>
           <label>
             Allowed sites
-            <input class="sitesInput" placeholder="allowed sites, comma-separated" />
+            <input class="sitesInput" placeholder="blank means all sites" />
           </label>
         </div>
-        <button class="approveBtn" type="button">Approve</button>
+        <div class="actions">
+          <button class="approveBtn" type="button">Approve</button>
+          <button class="deleteItemBtn danger" type="button">Delete</button>
+        </div>
       </article>
     </template>
 

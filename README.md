@@ -29,7 +29,7 @@ The MCP tools only expose approved items from the configured agent vault.
 Install from GitHub:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.2.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
 ```
 
 Or install from the latest `main` branch:
@@ -99,6 +99,8 @@ The console is a small workbench:
 ![Drag to copy](docs/screenshots/drag-to-copy.svg)
 
 Copy is the safe default. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
+
+Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
 
 ## Client Setup
 

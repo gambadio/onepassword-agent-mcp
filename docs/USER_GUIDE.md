@@ -19,7 +19,7 @@ Put only the logins you are comfortable letting agents use into that vault. Then
 Install the package:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.2.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.3.tar.gz
 ```
 
 Check your machine:
@@ -71,11 +71,19 @@ After a login is inside `MCPVAULT`, it appears under **Approve Agent Items**.
 github.com, *.github.com
 ```
 
+Leave allowed sites blank when the login may be used on any URL.
+
 3. Click **Approve**.
 
 ![Approve sites](screenshots/approve-sites.svg)
 
 Approved logins appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP does not return plaintext passwords.
+
+## Delete An Agent Vault Item
+
+In **Approve Agent Items**, click **Delete** next to an item to remove it from `MCPVAULT`.
+
+The console asks for confirmation first. 1Password moves deleted items to Recently Deleted, and any local agent approval for that item is removed.
 
 ## What Agents Can Do
 

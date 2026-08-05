@@ -32,6 +32,21 @@ test("manual grants must point at the configured agent vault", async () => {
   });
 });
 
+test("blank allowed sites approve an item for every URL", async () => {
+  await withTempHome(async () => {
+    const policy = new PolicyService(new StateStore());
+    await policy.createManual({
+      title: "Any Site Login",
+      secretRef: "op://MCPVAULT/Any Site Login/password",
+      sites: [],
+    });
+
+    const matches = await policy.findForSite("https://example.com/login");
+    assert.equal(matches.length, 1);
+    assert.equal(matches[0].sites.length, 0);
+  });
+});
+
 async function withTempHome(run: () => Promise<void>): Promise<void> {
   const previousHome = process.env.ONEPASSWORD_MCP_HOME;
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-policy-test-"));

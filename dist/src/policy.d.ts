@@ -18,6 +18,7 @@ export declare class PolicyService {
     }): Promise<Grant>;
     updateGrant(id: string, patch: Partial<Omit<Grant, "id" | "encryptedRef" | "createdAt">>): Promise<Grant>;
     deleteGrant(id: string): Promise<void>;
+    deleteGrantsForItem(itemId: string, vaultId?: string, vaultName?: string): Promise<number>;
     resolveHandle(handle: string, expectedSite?: string): Promise<{
         grant: Grant;
         secretRef: string;

@@ -94,6 +94,19 @@ export class OpCli {
     ], { timeoutMs: 60_000 });
   }
 
+  async deleteItem(input: {
+    itemId: string;
+    vault: string;
+  }): Promise<void> {
+    await this.run([
+      "item",
+      "delete",
+      input.itemId,
+      "--vault",
+      input.vault,
+    ], { timeoutMs: 45_000 });
+  }
+
   async readSecret(secretRef: string): Promise<string> {
     const result = await this.run(["read", "--no-newline", secretRef], { timeoutMs: 30_000 });
     return result.stdout;

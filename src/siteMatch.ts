@@ -17,6 +17,7 @@ export function normalizePattern(pattern: string): string {
 }
 
 export function siteMatches(allowedPatterns: string[], site: string): boolean {
+  if (!allowedPatterns.length) return true;
   const target = normalizeSite(site);
   if (!target) return false;
   const targetHost = target.hostname.toLowerCase();
@@ -25,7 +26,7 @@ export function siteMatches(allowedPatterns: string[], site: string): boolean {
   return allowedPatterns.some((rawPattern) => {
     const pattern = normalizePattern(rawPattern);
     if (!pattern) return false;
-    if (pattern === "*") return false;
+    if (pattern === "*") return true;
 
     if (pattern.startsWith("*.")) {
       const suffix = pattern.slice(1);

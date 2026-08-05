@@ -21,6 +21,10 @@ export declare class OpCli {
         currentVault: string;
         destinationVault: string;
     }): Promise<void>;
+    deleteItem(input: {
+        itemId: string;
+        vault: string;
+    }): Promise<void>;
     readSecret(secretRef: string): Promise<string>;
     listCandidates(options: {
         vault?: string;

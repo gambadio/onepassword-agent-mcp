@@ -48,6 +48,42 @@ test("copyItemToVault supplies the item category when creating from piped JSON",
   }
 });
 
+test("deleteItem scopes deletion to the provided vault", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
+  const fakeOp = path.join(dir, "op-fake.js");
+  const logFile = path.join(dir, "calls.jsonl");
+  const previousLog = process.env.OPMCP_TEST_LOG;
+  await fs.writeFile(fakeOp, fakeOpScript(), { mode: 0o755 });
+  process.env.OPMCP_TEST_LOG = logFile;
+
+  try {
+    const op = new OpCli({
+      ...testSettings,
+      opPath: fakeOp,
+    });
+    await op.deleteItem({
+      itemId: "item_456",
+      vault: "MCPVAULT",
+    });
+
+    const calls = (await fs.readFile(logFile, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { args: string[] });
+    assert.deepEqual(calls[0].args, [
+      "item",
+      "delete",
+      "item_456",
+      "--vault",
+      "MCPVAULT",
+    ]);
+  } finally {
+    if (previousLog === undefined) delete process.env.OPMCP_TEST_LOG;
+    else process.env.OPMCP_TEST_LOG = previousLog;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 const testSettings: Settings = {
   opPath: "op",
   account: "",
@@ -76,6 +112,12 @@ if (args[0] === "item" && args[1] === "get") {
   }
   process.stdin.resume();
   process.stdin.on("end", () => process.exit(0));
+} else if (args[0] === "item" && args[1] === "delete") {
+  if (!args.includes("--vault")) {
+    process.stderr.write("missing vault");
+    process.exit(1);
+  }
+  process.exit(0);
 } else {
   process.stderr.write("unexpected call");
   process.exit(1);

@@ -43,7 +43,8 @@ export interface AuditEvent {
     | "settings.updated"
     | "vault.created"
     | "item.copied"
-    | "item.moved";
+    | "item.moved"
+    | "item.deleted";
   grantId?: string;
   site?: string;
   message: string;

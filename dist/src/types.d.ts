@@ -30,7 +30,7 @@ export interface Grant {
 }
 export interface AuditEvent {
     id: string;
-    type: "grant.created" | "grant.updated" | "grant.deleted" | "secret.copied" | "secret.pasted" | "secret.denied" | "settings.updated" | "vault.created" | "item.copied" | "item.moved";
+    type: "grant.created" | "grant.updated" | "grant.deleted" | "secret.copied" | "secret.pasted" | "secret.denied" | "settings.updated" | "vault.created" | "item.copied" | "item.moved" | "item.deleted";
     grantId?: string;
     site?: string;
     message: string;
