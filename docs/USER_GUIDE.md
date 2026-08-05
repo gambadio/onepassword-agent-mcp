@@ -12,7 +12,7 @@ MCPVAULT
 
 Put only the items you are comfortable letting agents use into that vault. Then approve exact fields for specific websites.
 
-![Vault workbench](screenshots/mcpvault-workbench.svg)
+![Agent vault drag flow](screenshots/mcpvault-workbench.svg)
 
 ## First Run
 
@@ -53,9 +53,10 @@ Use **Choose From 1Password**:
 1. Pick your source vault, such as `Private`.
 2. Pick a type filter, such as **API keys** or **Credit cards**, when you do not want a mixed list.
 3. Search by item name, website, category, or account label.
-4. Drag the item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+4. Drag the item onto the **MCPVAULT** card.
+5. Choose **Copy** or **Move** in the small confirmation window.
 
-![Drag to copy](screenshots/drag-to-copy.svg)
+![Drag to MCPVAULT](screenshots/drag-to-copy.svg)
 
 Use **Copy** first when you are unsure. Copy leaves the original item in the source vault and duplicates its fields into `MCPVAULT`.
 

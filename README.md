@@ -12,7 +12,7 @@ The repo contains no personal 1Password data. Every install connects to that use
 
 > Not affiliated with or endorsed by 1Password.
 
-![Vault workbench](docs/screenshots/mcpvault-workbench.svg)
+![Agent vault drag flow](docs/screenshots/mcpvault-workbench.svg)
 
 ## How It Works
 
@@ -106,16 +106,16 @@ Enable the 1Password desktop integration:
 
 ## The Local Console
 
-The console is a small workbench:
+The console is a simple vault-to-vault flow:
 
 - **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
-- **Vault Workbench** lets you drag a source item into the agent vault.
 - **Choose From 1Password** searches your normal vaults and can filter by item type.
+- The **MCPVAULT** card is the drop destination. Drag an item onto it, then choose **Copy** or **Move**.
 - **Approve Agent Items** groups copied items into simple checklists for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
 - **Allowed For Agents** is the final allow list MCP clients can use.
 - **Profile Data For Agents** stores profile values agents may read directly, such as email, phone, address, name, or company.
 
-![Drag to copy](docs/screenshots/drag-to-copy.svg)
+![Drag to MCPVAULT](docs/screenshots/drag-to-copy.svg)
 
 Copy is the safe default. Copy now uses 1Password's revealed JSON clone pipe so the destination item keeps the original fields. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
 

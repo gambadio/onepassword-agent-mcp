@@ -101,14 +101,15 @@ This creates an empty 1Password vault. It does not copy or approve anything yet.
 
 ## 7. Copy Or Move Items Into MCPVAULT
 
-![Vault workbench](screenshots/mcpvault-workbench.svg)
+![Agent vault drag flow](screenshots/mcpvault-workbench.svg)
 
 Use **Choose From 1Password**:
 
 1. Select a source vault.
 2. Select a type filter when you want only logins, API keys, credit cards, notes, or other items.
 3. Search by item title, website, category, or account label.
-4. Drag an item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+4. Drag an item onto the **MCPVAULT** card.
+5. Choose **Copy** or **Move** in the confirmation window.
 
 Copy is safest because the original item stays where it is. Move removes the item from the source vault and creates a new item in `MCPVAULT`.
 

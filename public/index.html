@@ -54,25 +54,6 @@
         <div id="message" class="message" role="status" hidden></div>
       </section>
 
-      <section class="panel wide vaultBoard">
-        <div class="panelHeader">
-          <div>
-            <h2>Vault Workbench</h2>
-            <p class="hint">Drag an item from the source vault into the agent vault, then approve the exact fields agents may use.</p>
-          </div>
-        </div>
-        <div class="dropTargets">
-          <div class="dropTarget primaryDrop" data-drop-mode="copy" role="button" tabindex="0">
-            <span>Copy Into MCPVAULT</span>
-            <p>Leaves the original item in its current vault.</p>
-          </div>
-          <div class="dropTarget" data-drop-mode="move" role="button" tabindex="0">
-            <span>Move Into MCPVAULT</span>
-            <p>Moves the item out of the source vault after confirmation.</p>
-          </div>
-        </div>
-      </section>
-
       <section class="panel sourcePanel">
         <div class="panelHeader">
           <div>
@@ -80,6 +61,19 @@
             <p class="hint">Find an item in your normal vault. Copying it here does not share it with agents yet.</p>
           </div>
           <button id="loadSourceBtn" type="button">Search</button>
+        </div>
+        <div class="vaultFlow" aria-label="Move items between vaults">
+          <div class="vaultCard sourceVaultCard">
+            <span class="vaultEyebrow">From your vault</span>
+            <strong id="sourceVaultFlowName">Choose a source vault</strong>
+            <p>Search results appear below. Drag one item at a time.</p>
+          </div>
+          <div class="vaultArrow" aria-hidden="true">-></div>
+          <div id="mcpVaultDrop" class="vaultCard agentVaultCard" role="button" tabindex="0" aria-label="Drop selected item into MCPVAULT">
+            <span class="vaultEyebrow">Drop here</span>
+            <strong id="mcpVaultDropName">MCPVAULT</strong>
+            <p>After you drop an item, choose Copy or Move.</p>
+          </div>
         </div>
         <div class="searchGrid">
           <label>
@@ -313,7 +307,7 @@
         <div class="itemMain">
           <h3></h3>
           <p class="meta"></p>
-          <p class="dragHint">Drag this item to a drop target, or use the buttons.</p>
+          <p class="dragHint">Drag this item onto MCPVAULT, or use the buttons.</p>
         </div>
         <div class="actions">
           <button class="copyBtn" type="button">Copy</button>
@@ -394,6 +388,19 @@
         </div>
       </article>
     </template>
+
+    <div id="transferDialog" class="transferDialog" hidden>
+      <div class="dialogShade"></div>
+      <section class="dialogPanel" role="dialog" aria-modal="true" aria-labelledby="transferDialogTitle">
+        <h2 id="transferDialogTitle">Put this item in MCPVAULT?</h2>
+        <p id="transferDialogText"></p>
+        <div class="dialogActions">
+          <button id="transferCopyBtn" type="button">Copy</button>
+          <button id="transferMoveBtn" class="secondaryDanger" type="button">Move</button>
+          <button id="transferCancelBtn" class="secondary" type="button">Cancel</button>
+        </div>
+      </section>
+    </div>
 
     <script src="/app.js" type="module"></script>
   </body>

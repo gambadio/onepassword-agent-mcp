@@ -41,7 +41,7 @@ export class OpCli {
   }
 
   async listVaults(): Promise<OpVaultSummary[]> {
-    const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 30_000 });
+    const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 8_000 });
     return JSON.parse(result.stdout || "[]") as OpVaultSummary[];
   }
 
@@ -313,17 +313,27 @@ export class OpCli {
       stderr += chunk;
     });
 
+    let timedOut = false;
+    let killTimer: NodeJS.Timeout | undefined;
     const timeout = setTimeout(() => {
+      timedOut = true;
       child.kill("SIGTERM");
+      killTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
     }, options.timeoutMs || 30_000);
 
     return await new Promise<RunResult>((resolve, reject) => {
       child.on("error", (error) => {
         clearTimeout(timeout);
+        if (killTimer) clearTimeout(killTimer);
         reject(new Error(`Unable to run 1Password CLI at "${this.settings.opPath}": ${error.message}`));
       });
       child.on("close", (code, signal) => {
         clearTimeout(timeout);
+        if (killTimer) clearTimeout(killTimer);
+        if (timedOut) {
+          reject(new Error("1Password CLI timed out. Open and unlock 1Password, then approve CLI access if prompted."));
+          return;
+        }
         if (code === 0) {
           resolve({ stdout, stderr });
           return;

@@ -21,7 +21,14 @@ const mcpVaultNameLabel = document.querySelector("#mcpVaultNameLabel");
 const mcpVaultStatus = document.querySelector("#mcpVaultStatus");
 const createVaultBtn = document.querySelector("#createVaultBtn");
 const messageEl = document.querySelector("#message");
-const dropTargets = document.querySelectorAll("[data-drop-mode]");
+const sourceVaultFlowName = document.querySelector("#sourceVaultFlowName");
+const mcpVaultDrop = document.querySelector("#mcpVaultDrop");
+const mcpVaultDropName = document.querySelector("#mcpVaultDropName");
+const transferDialog = document.querySelector("#transferDialog");
+const transferDialogText = document.querySelector("#transferDialogText");
+const transferCopyBtn = document.querySelector("#transferCopyBtn");
+const transferMoveBtn = document.querySelector("#transferMoveBtn");
+const transferCancelBtn = document.querySelector("#transferCancelBtn");
 
 let sourceSearchTimer;
 let mcpSearchTimer;
@@ -29,6 +36,7 @@ let currentStatus;
 let currentGrants = [];
 let sourceCandidateMap = new Map();
 let selectedCandidateId = "";
+let pendingTransferCandidate = null;
 let activeSecretGroup = "all";
 let expandedApprovalItems = new Set();
 
@@ -36,25 +44,37 @@ document.querySelector("#refreshBtn").addEventListener("click", () => runAction(
 document.querySelector("#loadSourceBtn").addEventListener("click", () => runAction(loadSourceCandidates));
 document.querySelector("#loadMcpBtn").addEventListener("click", () => runAction(loadMcpCandidates));
 createVaultBtn.addEventListener("click", () => runAction(ensureMcpVault));
-for (const target of dropTargets) {
-  target.addEventListener("dragover", onDropTargetDragOver);
-  target.addEventListener("dragenter", onDropTargetDragEnter);
-  target.addEventListener("dragleave", onDropTargetDragLeave);
-  target.addEventListener("drop", onDropTargetDrop);
-  target.addEventListener("click", () => runAction(() => transferSelectedCandidate(target.dataset.dropMode)));
-  target.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      runAction(() => transferSelectedCandidate(target.dataset.dropMode));
-    }
-  });
-}
+mcpVaultDrop.addEventListener("dragover", onMcpVaultDragOver);
+mcpVaultDrop.addEventListener("dragenter", onMcpVaultDragEnter);
+mcpVaultDrop.addEventListener("dragleave", onMcpVaultDragLeave);
+mcpVaultDrop.addEventListener("drop", onMcpVaultDrop);
+mcpVaultDrop.addEventListener("click", () => runAction(openSelectedCandidateTransfer));
+mcpVaultDrop.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    runAction(openSelectedCandidateTransfer);
+  }
+});
+transferCopyBtn.addEventListener("click", () => runAction(() => runPendingTransfer("copy")));
+transferMoveBtn.addEventListener("click", () => runAction(() => runPendingTransfer("move")));
+transferCancelBtn.addEventListener("click", closeTransferDialog);
+transferDialog.addEventListener("click", (event) => {
+  if (event.target === transferDialog || (event.target instanceof Element && event.target.classList.contains("dialogShade"))) {
+    closeTransferDialog();
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !transferDialog.hidden) closeTransferDialog();
+});
 
 sourceSearchInput.addEventListener("input", () => {
   window.clearTimeout(sourceSearchTimer);
   sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 350);
 });
-sourceVaultSelect.addEventListener("change", () => runAction(loadSourceCandidates));
+sourceVaultSelect.addEventListener("change", () => {
+  updateVaultFlowLabels();
+  runAction(loadSourceCandidates);
+});
 sourceGroupSelect.addEventListener("change", () => runAction(loadSourceCandidates));
 mcpSearchInput.addEventListener("input", () => {
   window.clearTimeout(mcpSearchTimer);
@@ -102,12 +122,10 @@ function renderStatus(status) {
   statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed.`;
 
   mcpVaultNameLabel.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
+  mcpVaultDropName.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
   createVaultBtn.textContent = `Create ${mcpVault.name || "MCPVAULT"}`;
-  for (const target of dropTargets) {
-    const title = target.querySelector("span");
-    if (!title) continue;
-    title.textContent = `${target.dataset.dropMode === "move" ? "Move" : "Copy"} Into ${mcpVault.name || "MCPVAULT"}`;
-  }
+  mcpVaultDrop.classList.toggle("unavailable", !mcpVault.exists);
+  mcpVaultDrop.setAttribute("aria-disabled", String(!mcpVault.exists));
   createVaultBtn.hidden = Boolean(mcpVault.exists);
   createVaultBtn.disabled = !cli.installed || !cli.authenticated;
   if (mcpVault.exists) {
@@ -158,6 +176,7 @@ function renderVaultOptions(vaults, mcpVaultName) {
   } else if (sourceVaultSelect.options.length > 1) {
     sourceVaultSelect.selectedIndex = 1;
   }
+  updateVaultFlowLabels();
 }
 
 function renderGrants(grants) {
@@ -303,20 +322,42 @@ function selectSourceCandidate(dragId) {
     item.classList.toggle("selected", item.dataset.dragId === dragId);
   }
   const candidate = sourceCandidateMap.get(dragId);
-  if (candidate) setMessage(`Selected ${candidate.itemTitle || candidate.title}. Drop it into MCPVAULT or click a drop target.`);
+  if (candidate) setMessage(`Selected ${candidate.itemTitle || candidate.title}. Drop it onto MCPVAULT, then choose Copy or Move.`);
 }
 
-async function transferSelectedCandidate(mode = "copy") {
+async function openSelectedCandidateTransfer() {
+  const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
+  if (!currentStatus?.cli?.mcpVault?.exists) {
+    setMessage(`Create ${name} first, then drag items into it.`, true);
+    return;
+  }
   const candidate = sourceCandidateMap.get(selectedCandidateId);
   if (!candidate) {
     setMessage("Select or drag a source item first.", true);
     return;
   }
-  if (mode === "move") {
-    const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
-    const ok = window.confirm(`Move "${candidate.itemTitle || candidate.title}" into ${name}?\n\n1Password will remove it from the source vault and create a new item in ${name}.`);
-    if (!ok) return;
-  }
+  openTransferDialog(candidate);
+}
+
+function openTransferDialog(candidate) {
+  pendingTransferCandidate = candidate;
+  const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
+  const sourceVault = candidate.vaultName || selectedVaultLabel(sourceVaultSelect) || "the source vault";
+  transferDialog.querySelector("h2").textContent = `Put "${candidate.itemTitle || candidate.title}" in ${name}?`;
+  transferDialogText.textContent = `Copy keeps it in ${sourceVault}. Move removes it from ${sourceVault} after creating the new item in ${name}. Nothing is shared with agents until you approve details.`;
+  transferDialog.hidden = false;
+  transferCopyBtn.focus();
+}
+
+function closeTransferDialog() {
+  transferDialog.hidden = true;
+  pendingTransferCandidate = null;
+}
+
+async function runPendingTransfer(mode) {
+  const candidate = pendingTransferCandidate;
+  if (!candidate) return;
+  closeTransferDialog();
   await transferCandidate(candidate, mode);
 }
 
@@ -333,34 +374,37 @@ async function transferCandidate(candidate, mode) {
   setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} into ${name}. Next, choose which details agents may use.`);
 }
 
-function onDropTargetDragOver(event) {
+function onMcpVaultDragOver(event) {
   event.preventDefault();
-  event.dataTransfer.dropEffect = event.currentTarget.dataset.dropMode === "move" ? "move" : "copy";
+  event.dataTransfer.dropEffect = "copy";
 }
 
-function onDropTargetDragEnter(event) {
+function onMcpVaultDragEnter(event) {
   event.preventDefault();
   event.currentTarget.classList.add("dragOver");
 }
 
-function onDropTargetDragLeave(event) {
+function onMcpVaultDragLeave(event) {
   if (!event.currentTarget.contains(event.relatedTarget)) {
     event.currentTarget.classList.remove("dragOver");
   }
 }
 
-function onDropTargetDrop(event) {
+function onMcpVaultDrop(event) {
   event.preventDefault();
   const dragId = event.dataTransfer.getData("application/x-opmcp-candidate") || selectedCandidateId;
   selectedCandidateId = dragId;
   clearDropHighlights();
-  runAction(() => transferSelectedCandidate(event.currentTarget.dataset.dropMode));
+  runAction(openSelectedCandidateTransfer);
 }
 
 function clearDropHighlights() {
-  for (const target of dropTargets) {
-    target.classList.remove("dragOver");
-  }
+  mcpVaultDrop.classList.remove("dragOver");
+}
+
+function updateVaultFlowLabels() {
+  const selected = selectedVaultLabel(sourceVaultSelect);
+  sourceVaultFlowName.textContent = selected || "Choose a source vault";
 }
 
 async function loadMcpCandidates() {
