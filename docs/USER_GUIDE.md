@@ -77,8 +77,9 @@ Think of this section as a checklist:
 
 1. Pick the type box you want, such as **Credit Cards**.
 2. Find the copied item. It appears once, even if it contains several fields.
-3. Read the simple field names and tick only what the agent may use.
-4. Enter allowed sites, such as:
+3. Click **Review Details**.
+4. Read the simple field names and tick only what the agent may use.
+5. Enter allowed sites, such as:
 
 ```text
 github.com, *.github.com
@@ -86,7 +87,7 @@ github.com, *.github.com
 
 Leave allowed sites blank when the approved details may be used on any URL.
 
-5. Click **Approve Selected**.
+6. Click **Approve Selected**.
 
 For credit cards, suggested details are usually cardholder name, card number, and expiry date. CVV and PIN are shown separately and are not suggested by default.
 

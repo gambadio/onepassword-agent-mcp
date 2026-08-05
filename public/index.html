@@ -331,21 +331,27 @@
             <p class="approvalPlain"></p>
             <p class="meta"></p>
           </div>
+          <div class="approvalHeaderActions">
+            <span class="approvalStatus"></span>
+            <button class="toggleApprovalBtn secondary" type="button" aria-expanded="false">Review Details</button>
+          </div>
         </div>
-        <div class="approvalNotice">
-          <strong>Nothing is shared yet.</strong>
-          <span>Select the details below, then approve them. The agent still never sees the raw value until a local copy or paste happens.</span>
-        </div>
-        <label class="siteScope">
-          Websites where agents may use this item
-          <input class="sitesInput" placeholder="Leave empty for any website, or type domains like revolut.com" />
-          <small>For most logins, add the website. For general cards or reusable API keys, blank means any website.</small>
-        </label>
-        <div class="fieldList" aria-label="Details inside this item"></div>
-        <div class="approvalActions">
-          <button class="approveSelectedBtn" type="button">Approve Selected</button>
-          <button class="selectRecommendedBtn secondary" type="button">Select Suggested</button>
-          <button class="deleteItemBtn danger" type="button">Delete Item</button>
+        <div class="approvalBody" hidden>
+          <div class="approvalNotice">
+            <strong>Nothing is shared yet.</strong>
+            <span>Select the details below, then approve them. The agent still never sees the raw value until a local copy or paste happens.</span>
+          </div>
+          <label class="siteScope">
+            Websites where agents may use this item
+            <input class="sitesInput" placeholder="Leave empty for any website, or type domains like revolut.com" />
+            <small>For most logins, add the website. For general cards or reusable API keys, blank means any website.</small>
+          </label>
+          <div class="fieldList" aria-label="Details inside this item"></div>
+          <div class="approvalActions">
+            <button class="approveSelectedBtn" type="button">Approve Selected</button>
+            <button class="selectRecommendedBtn secondary" type="button">Select Suggested</button>
+            <button class="deleteItemBtn danger" type="button">Delete Item</button>
+          </div>
         </div>
       </article>
     </template>

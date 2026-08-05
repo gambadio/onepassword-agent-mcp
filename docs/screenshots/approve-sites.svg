@@ -55,6 +55,9 @@
     <text x="37" y="42" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="10" font-weight="900">CARD</text>
     <text x="72" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">Revolut Card</text>
     <text x="72" y="52" fill="#344054" font-family="Arial, sans-serif" font-size="12">Approve only the card details an agent really needs. CVV and PIN are not selected by default.</text>
+    <text x="790" y="30" text-anchor="end" fill="#627084" font-family="Arial, sans-serif" font-size="12" font-weight="700">5 details · 3 suggested · 2 sensitive</text>
+    <rect x="812" y="12" width="118" height="34" rx="6" fill="#ffffff" stroke="#147d73"/>
+    <text x="871" y="34" text-anchor="middle" fill="#147d73" font-family="Arial, sans-serif" font-size="12" font-weight="700">Hide Details</text>
     <rect x="72" y="68" width="612" height="34" rx="6" fill="#ffffff" stroke="#d7dee8"/>
     <text x="86" y="90" fill="#627084" font-family="Arial, sans-serif" font-size="12">Websites: blank means any website, or type domains like checkout.example</text>
 

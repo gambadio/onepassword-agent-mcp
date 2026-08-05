@@ -120,9 +120,10 @@ Use **Approve Agent Items**:
 
 1. Use the type boxes to switch between logins, API keys, credit cards, notes, and other fields.
 2. Find the copied or moved item in `MCPVAULT`.
-3. Tick the exact details agents may use. Sensitive details like card CVV, card PIN, and SSH private keys are shown separately.
-4. Enter allowed sites, such as `github.com, *.github.com`.
-5. Click **Approve Selected**.
+3. Click **Review Details**.
+4. Tick the exact details agents may use. Sensitive details like card CVV, card PIN, and SSH private keys are shown separately.
+5. Enter allowed sites, such as `github.com, *.github.com`.
+6. Click **Approve Selected**.
 
 Leave allowed sites blank when an entry may be used on all URLs.
 

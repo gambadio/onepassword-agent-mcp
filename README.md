@@ -119,7 +119,7 @@ The console is a small workbench:
 
 Copy is the safe default. Copy now uses 1Password's revealed JSON clone pipe so the destination item keeps the original fields. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
 
-After copying, nothing is shared with agents yet. Open the copied item on the approval side, tick only the details the agent may use, then click **Approve Selected**. Credit cards show normal checkout details separately from sensitive details like CVV or PIN. Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
+After copying, nothing is shared with agents yet. In **All Fields**, copied items stay compact so the page remains easy to scan. Click **Review Details** on an item, tick only the details the agent may use, then click **Approve Selected**. Credit cards show normal checkout details separately from sensitive details like CVV or PIN. Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
 
 ## Client Setup
 

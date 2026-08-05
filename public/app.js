@@ -30,6 +30,7 @@ let currentGrants = [];
 let sourceCandidateMap = new Map();
 let selectedCandidateId = "";
 let activeSecretGroup = "all";
+let expandedApprovalItems = new Set();
 
 document.querySelector("#refreshBtn").addEventListener("click", () => runAction(refresh));
 document.querySelector("#loadSourceBtn").addEventListener("click", () => runAction(loadSourceCandidates));
@@ -62,6 +63,9 @@ mcpSearchInput.addEventListener("input", () => {
 for (const button of secretGroupButtons) {
   button.addEventListener("click", () => {
     activeSecretGroup = button.dataset.secretGroup || "all";
+    if (activeSecretGroup === "all") {
+      expandedApprovalItems = new Set();
+    }
     renderSecretGroupButtons();
     runAction(loadMcpCandidates, { quiet: true });
   });
@@ -402,6 +406,7 @@ function renderMcpCandidates(result) {
     const node = template.content.cloneNode(true);
     const article = node.querySelector("article");
     article.classList.add(`approval-${group.type}`);
+    article.dataset.itemKey = group.key;
     node.querySelector(".itemBadge").textContent = groupBadge(group.type);
     node.querySelector("h3").textContent = group.title;
     node.querySelector(".approvalPlain").textContent = groupIntro(group);
@@ -410,6 +415,18 @@ function renderMcpCandidates(result) {
       `${group.candidates.length} detail${group.candidates.length === 1 ? "" : "s"} found`,
       group.defaultSites.length ? `saved website: ${group.defaultSites.join(", ")}` : "no website saved",
     ].filter(Boolean).join(" | ");
+    const stats = approvalStats(group);
+    node.querySelector(".approvalStatus").textContent = approvalStatusText(stats);
+    const body = node.querySelector(".approvalBody");
+    const toggleButton = node.querySelector(".toggleApprovalBtn");
+    const expanded = expandedApprovalItems.has(group.key) || (activeSecretGroup !== "all" && groups.length === 1);
+    setApprovalExpanded(article, body, toggleButton, expanded);
+    toggleButton.addEventListener("click", () => {
+      const next = body.hidden;
+      if (next) expandedApprovalItems.add(group.key);
+      else expandedApprovalItems.delete(group.key);
+      setApprovalExpanded(article, body, toggleButton, next);
+    });
     const sitesInput = node.querySelector(".sitesInput");
     sitesInput.value = group.defaultSites.join(", ");
     const fieldList = node.querySelector(".fieldList");
@@ -499,6 +516,43 @@ function renderSecretGroupCounts(groups) {
     el.textContent = String(groups[key] || 0);
   }
   renderSecretGroupButtons();
+}
+
+function setApprovalExpanded(article, body, button, expanded) {
+  article.classList.toggle("isExpanded", expanded);
+  body.hidden = !expanded;
+  button.setAttribute("aria-expanded", String(expanded));
+  button.textContent = expanded ? "Hide Details" : "Review Details";
+}
+
+function approvalStats(group) {
+  let approved = 0;
+  let suggested = 0;
+  let sensitive = 0;
+  for (const candidate of group.candidates) {
+    const copy = fieldCopy(candidate);
+    if (isApprovedCandidate(candidate)) approved += 1;
+    else if (copy.suggested) suggested += 1;
+    if (copy.sensitive) sensitive += 1;
+  }
+  return {
+    total: group.candidates.length,
+    approved,
+    suggested,
+    sensitive,
+    pending: group.candidates.length - approved,
+  };
+}
+
+function approvalStatusText(stats) {
+  if (stats.total === stats.approved) {
+    return `${stats.total} approved`;
+  }
+  const parts = [`${stats.total} detail${stats.total === 1 ? "" : "s"}`];
+  if (stats.approved) parts.push(`${stats.approved} approved`);
+  if (stats.suggested) parts.push(`${stats.suggested} suggested`);
+  if (stats.sensitive) parts.push(`${stats.sensitive} sensitive`);
+  return parts.join(" · ");
 }
 
 function groupCandidatesByItem(candidates) {

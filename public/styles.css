@@ -394,7 +394,7 @@ h3 {
 
 .approvalItem {
   display: grid;
-  gap: 14px;
+  gap: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 14px;
@@ -402,11 +402,15 @@ h3 {
   box-shadow: 0 8px 22px rgba(26, 38, 58, 0.04);
 }
 
+.approvalItem.isExpanded {
+  gap: 14px;
+}
+
 .approvalHeader {
   display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-columns: 48px minmax(0, 1fr) auto;
   gap: 12px;
-  align-items: start;
+  align-items: center;
 }
 
 .itemBadge {
@@ -433,9 +437,46 @@ h3 {
   min-width: 0;
 }
 
+.approvalHeaderActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.approvalStatus {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.toggleApprovalBtn::after {
+  content: "v";
+  display: inline-block;
+  margin-left: 7px;
+  font-size: 11px;
+  transform: translateY(-1px);
+}
+
+.approvalItem.isExpanded .toggleApprovalBtn::after {
+  transform: translateY(-1px) rotate(180deg);
+}
+
 .approvalPlain {
   color: #344054;
   font-size: 13px;
+}
+
+.approvalBody {
+  display: grid;
+  gap: 14px;
+  padding-top: 14px;
+}
+
+.approvalBody[hidden] {
+  display: none;
 }
 
 .approvalNotice {
@@ -699,6 +740,18 @@ button.danger:hover {
 
   .item {
     grid-template-columns: 1fr;
+  }
+
+  .approvalHeader {
+    grid-template-columns: 42px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .approvalHeaderActions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    min-width: 0;
+    flex-wrap: wrap;
   }
 
   .actions {

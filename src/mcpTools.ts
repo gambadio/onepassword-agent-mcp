@@ -17,7 +17,7 @@ function jsonResponse(value: unknown) {
 export function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "onepassword-agent-mcp",
-    version: "0.2.8",
+    version: "0.2.9",
   });
 
   const policy = new PolicyService();
