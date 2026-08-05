@@ -58,6 +58,78 @@ test("copyItemToVault reveals the source item and uses the documented clone pipe
   }
 });
 
+test("copyItemToVault retries category fallback with 1Password category names", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
+  const fakeOp = path.join(dir, "op-fake.js");
+  const logFile = path.join(dir, "calls.jsonl");
+  const previousLog = process.env.OPMCP_TEST_LOG;
+  const previousExpected = process.env.OPMCP_EXPECT_CREATE_CATEGORY;
+  await fs.writeFile(fakeOp, fakeOpScript(), { mode: 0o755 });
+  process.env.OPMCP_TEST_LOG = logFile;
+
+  try {
+    const op = new OpCli({
+      ...testSettings,
+      opPath: fakeOp,
+    });
+    const cases = [
+      { input: "CREDIT_CARD", expected: "Credit Card" },
+      { input: "API_CREDENTIAL", expected: "API Credential" },
+      { input: "SECURE_NOTE", expected: "Secure Note" },
+    ];
+
+    for (const entry of cases) {
+      process.env.OPMCP_EXPECT_CREATE_CATEGORY = entry.expected;
+      await op.copyItemToVault({
+        itemId: "item_123",
+        currentVault: "Private",
+        destinationVault: "MCPVAULT",
+        category: entry.input,
+      });
+    }
+
+    const calls = (await fs.readFile(logFile, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { args: string[] });
+    const createCalls = calls.filter((call) => call.args[0] === "item" && call.args[1] === "create");
+    assert.equal(createCalls.length, 6);
+    assert.deepEqual(createCalls[1].args, [
+      "item",
+      "create",
+      "--category",
+      "Credit Card",
+      "--vault",
+      "MCPVAULT",
+      "-",
+    ]);
+    assert.deepEqual(createCalls[3].args, [
+      "item",
+      "create",
+      "--category",
+      "API Credential",
+      "--vault",
+      "MCPVAULT",
+      "-",
+    ]);
+    assert.deepEqual(createCalls[5].args, [
+      "item",
+      "create",
+      "--category",
+      "Secure Note",
+      "--vault",
+      "MCPVAULT",
+      "-",
+    ]);
+  } finally {
+    if (previousLog === undefined) delete process.env.OPMCP_TEST_LOG;
+    else process.env.OPMCP_TEST_LOG = previousLog;
+    if (previousExpected === undefined) delete process.env.OPMCP_EXPECT_CREATE_CATEGORY;
+    else process.env.OPMCP_EXPECT_CREATE_CATEGORY = previousExpected;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("deleteItem scopes deletion to the provided vault", async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
   const fakeOp = path.join(dir, "op-fake.js");
@@ -264,8 +336,20 @@ if (args[0] === "item" && args[1] === "list") {
   process.stdout.write(JSON.stringify({ title: "Example", category: "LOGIN", fields: [] }));
   process.exit(0);
 } else if (args[0] === "item" && args[1] === "create") {
+  const expectedCategory = process.env.OPMCP_EXPECT_CREATE_CATEGORY || "";
+  const categoryIndex = args.indexOf("--category");
   process.stdin.resume();
-  process.stdin.on("end", () => process.exit(0));
+  process.stdin.on("end", () => {
+    if (expectedCategory && categoryIndex === -1) {
+      process.stderr.write("provide the item category with '--category' flag");
+      process.exit(1);
+    }
+    if (expectedCategory && args[categoryIndex + 1] !== expectedCategory) {
+      process.stderr.write(\`"\${args[categoryIndex + 1]}" is not a recognized item category\`);
+      process.exit(1);
+    }
+    process.exit(0);
+  });
 } else if (args[0] === "item" && args[1] === "delete") {
   if (!args.includes("--vault")) {
     process.stderr.write("missing vault");

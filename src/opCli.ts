@@ -506,12 +506,35 @@ function itemGroup(item: OpItemSummary): CandidateGroup {
 }
 
 function createCategory(category: string | undefined): string {
-  const value = (category || "login").trim().toLowerCase();
-  if (value === "login" || value === "password") return value;
-  if (value === "secure note") return "secure-note";
-  if (value === "api credential") return "api-credential";
-  if (value === "credit card") return "credit-card";
-  return value.replaceAll("_", "-").replaceAll(" ", "-");
+  const normalized = normalizeCategory(category || "LOGIN");
+  const categories: Record<string, string> = {
+    LOGIN: "Login",
+    PASSWORD: "Password",
+    SECURE_NOTE: "Secure Note",
+    API_CREDENTIAL: "API Credential",
+    CREDIT_CARD: "Credit Card",
+    IDENTITY: "Identity",
+    DOCUMENT: "Document",
+    SOFTWARE_LICENSE: "Software License",
+    BANK_ACCOUNT: "Bank Account",
+    DATABASE: "Database",
+    DRIVER_LICENSE: "Driver License",
+    OUTDOOR_LICENSE: "Outdoor License",
+    MEMBERSHIP: "Membership",
+    PASSPORT: "Passport",
+    REWARD_PROGRAM: "Reward Program",
+    SOCIAL_SECURITY_NUMBER: "Social Security Number",
+    WIRELESS_ROUTER: "Wireless Router",
+    SERVER: "Server",
+    EMAIL_ACCOUNT: "Email Account",
+    MEDICAL_RECORD: "Medical Record",
+    SSH_KEY: "SSH Key",
+    CRYPTO_WALLET: "Crypto Wallet",
+  };
+  return categories[normalized] || normalized
+    .split("_")
+    .map((part) => part ? part[0].toUpperCase() + part.slice(1).toLowerCase() : part)
+    .join(" ");
 }
 
 function createItemTemplate(input: CreateSecretItemInput): Record<string, unknown> {
