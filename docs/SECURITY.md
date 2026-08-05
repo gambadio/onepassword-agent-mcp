@@ -40,7 +40,7 @@ For the strictest 1Password-side boundary, use a 1Password service account scope
 Copy duplicates a source item into `MCPVAULT` through a direct 1Password CLI pipeline:
 
 ```bash
-op item get "<item>" --format json | op item create --vault MCPVAULT -
+op item get "<item>" --format json | op item create --category login --vault MCPVAULT -
 ```
 
 The app does not log or store that JSON.

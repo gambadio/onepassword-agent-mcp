@@ -61,10 +61,19 @@ export class OpCli {
     itemId: string;
     currentVault: string;
     destinationVault: string;
+    category?: string;
   }): Promise<void> {
     await this.pipeOp(
       ["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"],
-      ["item", "create", "--vault", input.destinationVault, "-"],
+      [
+        "item",
+        "create",
+        "--category",
+        createCategory(input.category),
+        "--vault",
+        input.destinationVault,
+        "-",
+      ],
       90_000,
     );
   }
@@ -148,6 +157,7 @@ export class OpCli {
       itemTitle: item.title,
       fieldLabel,
       kind: "password",
+      category: item.category,
       sites,
       issuedAt: new Date().toISOString(),
     };
@@ -159,6 +169,7 @@ export class OpCli {
       itemTitle: item.title,
       fieldLabel,
       kind: "password",
+      category: item.category,
       sites,
     };
   }
@@ -303,4 +314,11 @@ function itemMatchesQuery(item: OpItemSummary, query: string): boolean {
     .split(/\s+/)
     .filter(Boolean)
     .every((part) => haystack.includes(part));
+}
+
+function createCategory(category: string | undefined): string {
+  const value = (category || "login").trim().toLowerCase();
+  if (value === "login" || value === "password") return value;
+  if (value === "secure note") return "secure-note";
+  return value.replaceAll("_", "-").replaceAll(" ", "-");
 }

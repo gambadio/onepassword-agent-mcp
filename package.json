@@ -1,6 +1,6 @@
 {
   "name": "onepassword-agent-mcp",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local MCP server that lets agents paste approved 1Password secrets without receiving plaintext.",
   "type": "module",
   "license": "MIT",

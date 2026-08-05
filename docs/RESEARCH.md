@@ -31,6 +31,7 @@ Relevant findings:
 - `op item move <item> --current-vault <source> --destination-vault <destination>` moves an item between vaults.
 - 1Password documents that moving creates a copy in the destination vault and deletes the original item, which gives the item a new ID.
 - `op item get "<item>" --format json | op item create --vault <vault> -` is the documented pattern for duplicating an existing item into another vault.
+- On the tested 1Password CLI, piped `op item create` can still require `--category`; the app supplies the `Login` or `Password` category from `op item list`.
 - `op read --no-newline <secret-reference>` resolves one secret reference without appending a newline.
 - Secret references have the form `op://<vault>/<item>/[section/]<field>`.
 - `op item get --format json` field objects include a `reference` key, which is useful for expert/custom fields.

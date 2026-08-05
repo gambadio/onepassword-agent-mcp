@@ -29,7 +29,7 @@ The MCP tools only expose approved items from the configured agent vault.
 Install from GitHub:
 
 ```bash
-npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.0.tar.gz
+npm install -g https://github.com/gambadio/onepassword-agent-mcp/archive/refs/tags/v0.2.1.tar.gz
 ```
 
 Or install from the latest `main` branch:

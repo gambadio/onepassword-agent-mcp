@@ -60,6 +60,7 @@ export interface CandidatePayload {
     itemTitle?: string;
     fieldLabel: string;
     kind: SecretKind;
+    category?: string;
     sites: string[];
     issuedAt: string;
 }
@@ -71,6 +72,7 @@ export interface Candidate {
     itemTitle?: string;
     fieldLabel: string;
     kind: SecretKind;
+    category?: string;
     sites: string[];
 }
 export interface CandidateSearchResult {

@@ -46,7 +46,15 @@ export class OpCli {
         }
     }
     async copyItemToVault(input) {
-        await this.pipeOp(["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"], ["item", "create", "--vault", input.destinationVault, "-"], 90_000);
+        await this.pipeOp(["item", "get", input.itemId, "--vault", input.currentVault, "--format", "json"], [
+            "item",
+            "create",
+            "--category",
+            createCategory(input.category),
+            "--vault",
+            input.destinationVault,
+            "-",
+        ], 90_000);
     }
     async moveItemToVault(input) {
         await this.run([
@@ -112,6 +120,7 @@ export class OpCli {
             itemTitle: item.title,
             fieldLabel,
             kind: "password",
+            category: item.category,
             sites,
             issuedAt: new Date().toISOString(),
         };
@@ -122,6 +131,7 @@ export class OpCli {
             itemTitle: item.title,
             fieldLabel,
             kind: "password",
+            category: item.category,
             sites,
         };
     }
@@ -248,5 +258,13 @@ function itemMatchesQuery(item, query) {
         .split(/\s+/)
         .filter(Boolean)
         .every((part) => haystack.includes(part));
+}
+function createCategory(category) {
+    const value = (category || "login").trim().toLowerCase();
+    if (value === "login" || value === "password")
+        return value;
+    if (value === "secure note")
+        return "secure-note";
+    return value.replaceAll("_", "-").replaceAll(" ", "-");
 }
 //# sourceMappingURL=opCli.js.map

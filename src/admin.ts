@@ -212,6 +212,7 @@ export async function createAdminApp() {
         itemId: candidate.itemId,
         currentVault,
         destinationVault,
+        category: candidate.category,
       });
     }
 
