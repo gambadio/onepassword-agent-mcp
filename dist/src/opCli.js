@@ -65,15 +65,19 @@ export class OpCli {
             if (!input.category || !/category/i.test(message)) {
                 throw error;
             }
-            await this.pipeOp(sourceArgs, [
+            const fallbackArgs = [
                 "item",
                 "create",
                 "--category",
                 createCategory(input.category),
                 "--vault",
                 input.destinationVault,
-                "-",
-            ], 90_000);
+            ];
+            if (input.title?.trim()) {
+                fallbackArgs.push("--title", input.title.trim());
+            }
+            fallbackArgs.push("-");
+            await this.pipeOp(sourceArgs, fallbackArgs, 90_000);
         }
     }
     async moveItemToVault(input) {
@@ -188,7 +192,9 @@ export class OpCli {
                 token: sealJson(payload, key),
                 title,
                 username: payload.username,
+                vaultId,
                 vaultName,
+                itemId: item.id,
                 itemTitle: item.title,
                 fieldLabel,
                 fieldId: field.id,

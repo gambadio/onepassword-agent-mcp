@@ -11,6 +11,8 @@
   --focus: #2563eb;
   --soft: #eef5f4;
   --notice: #fff7df;
+  --danger-soft: #fff3f0;
+  --warn-soft: #fff8eb;
 }
 
 * {
@@ -249,6 +251,33 @@ h3 {
   margin-bottom: 12px;
 }
 
+.approvalExplainer {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px;
+  border: 1px solid #c8e3df;
+  border-radius: 8px;
+  background: #f5fbfa;
+}
+
+.approvalExplainer div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.approvalExplainer strong {
+  color: var(--accent-strong);
+  font-size: 12px;
+}
+
+.approvalExplainer span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .typeCard {
   height: auto;
   min-height: 62px;
@@ -361,6 +390,168 @@ h3 {
   display: grid;
   gap: 8px;
   min-width: 0;
+}
+
+.approvalItem {
+  display: grid;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(26, 38, 58, 0.04);
+}
+
+.approvalHeader {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.itemBadge {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  background: var(--soft);
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.approval-card .itemBadge,
+.approval-card .approvalNotice {
+  background: #f4f8ff;
+}
+
+.approvalTitle {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.approvalPlain {
+  color: #344054;
+  font-size: 13px;
+}
+
+.approvalNotice {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #c8e3df;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #f5fbfa;
+}
+
+.approvalNotice strong {
+  color: var(--accent-strong);
+  font-size: 13px;
+}
+
+.approvalNotice span,
+.siteScope small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.siteScope {
+  gap: 6px;
+}
+
+.fieldList {
+  display: grid;
+  gap: 8px;
+}
+
+.fieldChoice {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfe;
+  cursor: pointer;
+}
+
+.fieldChoice:hover {
+  border-color: #94bdb8;
+  background: #f8fcfb;
+}
+
+.fieldChoice input {
+  width: 18px;
+  height: 18px;
+}
+
+.fieldChoiceText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fieldChoiceText strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.fieldChoiceText small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.fieldChoice em {
+  justify-self: end;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.suggestedTag {
+  background: var(--soft);
+  color: var(--accent-strong);
+}
+
+.sensitiveTag {
+  background: var(--warn-soft);
+  color: #8a5a00;
+}
+
+.approvedTag {
+  background: #eef2ff;
+  color: #3445a1;
+}
+
+.fieldChoice.sensitive {
+  border-color: #f1c27d;
+  background: #fffaf0;
+}
+
+.fieldChoice.approved {
+  border-style: dashed;
+  background: #f7f8ff;
+}
+
+.fieldChoice input:disabled {
+  opacity: 0.8;
+}
+
+.approvalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .actions {
@@ -499,6 +690,7 @@ button.danger:hover {
   .searchGrid,
   .approveGrid,
   .secretTypeGrid,
+  .approvalExplainer,
   .settingsGrid,
   .manualGrid,
   .profileGrid {
@@ -510,6 +702,19 @@ button.danger:hover {
   }
 
   .actions {
+    justify-content: flex-start;
+  }
+
+  .fieldChoice {
+    grid-template-columns: 22px minmax(0, 1fr);
+  }
+
+  .fieldChoice em {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .approvalActions {
     justify-content: flex-start;
   }
 }

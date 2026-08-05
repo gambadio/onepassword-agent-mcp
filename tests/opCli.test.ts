@@ -85,6 +85,7 @@ test("copyItemToVault retries category fallback with 1Password category names", 
         currentVault: "Private",
         destinationVault: "MCPVAULT",
         category: entry.input,
+        title: "Revolut Card",
       });
     }
 
@@ -101,6 +102,8 @@ test("copyItemToVault retries category fallback with 1Password category names", 
       "Credit Card",
       "--vault",
       "MCPVAULT",
+      "--title",
+      "Revolut Card",
       "-",
     ]);
     assert.deepEqual(createCalls[3].args, [
@@ -110,6 +113,8 @@ test("copyItemToVault retries category fallback with 1Password category names", 
       "API Credential",
       "--vault",
       "MCPVAULT",
+      "--title",
+      "Revolut Card",
       "-",
     ]);
     assert.deepEqual(createCalls[5].args, [
@@ -119,6 +124,8 @@ test("copyItemToVault retries category fallback with 1Password category names", 
       "Secure Note",
       "--vault",
       "MCPVAULT",
+      "--title",
+      "Revolut Card",
       "-",
     ]);
   } finally {

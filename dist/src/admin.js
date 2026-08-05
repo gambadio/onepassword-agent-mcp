@@ -227,6 +227,7 @@ export async function createAdminApp() {
                 currentVault,
                 destinationVault,
                 category: candidate.category,
+                title: candidate.itemTitle || candidate.title,
             });
         }
         await store.addAudit({

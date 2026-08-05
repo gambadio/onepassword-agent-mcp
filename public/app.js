@@ -26,6 +26,7 @@ const dropTargets = document.querySelectorAll("[data-drop-mode]");
 let sourceSearchTimer;
 let mcpSearchTimer;
 let currentStatus;
+let currentGrants = [];
 let sourceCandidateMap = new Map();
 let selectedCandidateId = "";
 let activeSecretGroup = "all";
@@ -77,6 +78,7 @@ await runAction(async () => {
 async function refresh() {
   const [status, grants, profile] = await Promise.all([api("/api/status"), api("/api/grants"), api("/api/profile")]);
   currentStatus = status;
+  currentGrants = grants || [];
   renderStatus(status);
   renderSettings(status.settings);
   renderVaultOptions(status.cli?.vaults || [], status.settings.mcpVaultName);
@@ -320,9 +322,11 @@ async function transferCandidate(candidate, mode) {
     method: "POST",
     body: JSON.stringify({ token: candidate.token, mode }),
   });
+  activeSecretGroup = groupFromCategory(candidate.category);
+  renderSecretGroupButtons();
   await refresh();
   await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
-  setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} into ${name}.`);
+  setMessage(`${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} into ${name}. Next, choose which details agents may use.`);
 }
 
 function onDropTargetDragOver(event) {
@@ -385,50 +389,99 @@ async function loadMcpCandidates() {
 
 function renderMcpCandidates(result) {
   const candidates = result.items || [];
+  const groups = groupCandidatesByItem(candidates);
   mcpCandidatesEl.innerHTML = "";
   renderSecretGroupCounts(result.groups || {});
-  mcpSummary.textContent = `${result.shown} shown of ${result.matched} ${groupLabel(result.activeGroup)} matches (${result.total} total in agent vault).`;
-  if (!candidates.length) {
-    mcpCandidatesEl.append(empty(`No matching ${groupLabel(result.activeGroup)} fields found in the agent vault.`));
+  mcpSummary.textContent = formatMcpSummary(result, groups);
+  if (!groups.length) {
+    mcpCandidatesEl.append(empty(`No ${approvalGroupLabel(result.activeGroup)} items are ready to approve yet. Copy one from the left side first.`));
     return;
   }
   const template = document.querySelector("#mcpCandidateTemplate");
-  for (const candidate of candidates) {
+  for (const group of groups) {
     const node = template.content.cloneNode(true);
-    node.querySelector("h3").textContent = candidate.title;
+    const article = node.querySelector("article");
+    article.classList.add(`approval-${group.type}`);
+    node.querySelector(".itemBadge").textContent = groupBadge(group.type);
+    node.querySelector("h3").textContent = group.title;
+    node.querySelector(".approvalPlain").textContent = groupIntro(group);
     node.querySelector(".meta").textContent = [
-      candidate.vaultName ? `vault: ${candidate.vaultName}` : "",
-      candidate.category ? `category: ${formatCategory(candidate.category)}` : "",
-      candidate.kind ? `kind: ${formatKind(candidate.kind)}` : "",
-      candidate.sites.length ? `site: ${candidate.sites.join(", ")}` : "blank allowed sites means all sites",
-      `field: ${candidate.fieldLabel}`,
+      group.category ? `category: ${formatCategory(group.category)}` : "",
+      `${group.candidates.length} detail${group.candidates.length === 1 ? "" : "s"} found`,
+      group.defaultSites.length ? `saved website: ${group.defaultSites.join(", ")}` : "no website saved",
     ].filter(Boolean).join(" | ");
     const sitesInput = node.querySelector(".sitesInput");
-    sitesInput.value = candidate.sites.join(", ");
-    node.querySelector(".approveBtn").addEventListener("click", () => runAction(async () => {
+    sitesInput.value = group.defaultSites.join(", ");
+    const fieldList = node.querySelector(".fieldList");
+    for (const [index, candidate] of group.candidates.entries()) {
+      const copy = fieldCopy(candidate);
+      const approved = isApprovedCandidate(candidate);
+      const row = document.createElement("label");
+      row.className = `fieldChoice ${copy.sensitive ? "sensitive" : ""} ${approved ? "approved" : ""}`;
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = String(index);
+      checkbox.checked = approved || copy.suggested;
+      checkbox.disabled = approved;
+      const text = document.createElement("span");
+      text.className = "fieldChoiceText";
+      const title = document.createElement("strong");
+      title.textContent = copy.title;
+      const description = document.createElement("small");
+      description.textContent = copy.description;
+      const tag = document.createElement("em");
+      tag.textContent = approved ? "Already approved" : copy.tag;
+      tag.className = approved ? "approvedTag" : copy.sensitive ? "sensitiveTag" : "suggestedTag";
+      text.append(title, description);
+      row.append(checkbox, text, tag);
+      fieldList.append(row);
+    }
+    const approveButton = node.querySelector(".approveSelectedBtn");
+    const selectableCount = group.candidates.filter((candidate) => !isApprovedCandidate(candidate)).length;
+    approveButton.disabled = selectableCount === 0;
+    approveButton.textContent = selectableCount === 0 ? "Everything Approved" : "Approve Selected";
+    node.querySelector(".selectRecommendedBtn").addEventListener("click", () => {
+      for (const checkbox of fieldList.querySelectorAll("input[type='checkbox']")) {
+        if (checkbox.disabled) continue;
+        const candidate = group.candidates[Number(checkbox.value)];
+        checkbox.checked = fieldCopy(candidate).suggested;
+      }
+      setMessage("Selected the suggested details. Review them, then approve.");
+    });
+    approveButton.addEventListener("click", () => runAction(async () => {
       const sites = splitCsv(sitesInput.value);
-      await api("/api/grants/import", {
-        method: "POST",
-        body: JSON.stringify({
-          token: candidate.token,
-          sites,
-        }),
-      });
+      const selected = [...fieldList.querySelectorAll("input[type='checkbox']")]
+        .filter((checkbox) => checkbox.checked && !checkbox.disabled)
+        .map((checkbox) => group.candidates[Number(checkbox.value)])
+        .filter(Boolean);
+      if (!selected.length) {
+        setMessage("Choose at least one detail to approve. Nothing has been shared yet.", true);
+        return;
+      }
+      for (const candidate of selected) {
+        await api("/api/grants/import", {
+          method: "POST",
+          body: JSON.stringify({
+            token: candidate.token,
+            sites,
+          }),
+        });
+      }
       await refresh();
       await loadMcpCandidates();
-      setMessage(`Approved ${candidate.title} for ${sites.length ? sites.join(", ") : "all sites"}.`);
+      setMessage(`Approved ${selected.length} detail${selected.length === 1 ? "" : "s"} from ${group.title} for ${sites.length ? sites.join(", ") : "all websites"}.`);
     }));
     node.querySelector(".deleteItemBtn").addEventListener("click", () => runAction(async () => {
       const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
-      const ok = window.confirm(`Delete "${candidate.itemTitle || candidate.title}" from ${name}?\n\n1Password will move it to Recently Deleted. Any local agent approval for this item will also be removed.`);
+      const ok = window.confirm(`Delete "${group.title}" from ${name}?\n\nThis deletes the whole copied item from the agent vault, not just one detail. 1Password will move it to Recently Deleted. Any local agent approvals for this item will also be removed.`);
       if (!ok) return;
       await api("/api/op/mcp-vault/items/delete", {
         method: "POST",
-        body: JSON.stringify({ token: candidate.token }),
+        body: JSON.stringify({ token: group.candidates[0].token }),
       });
       await refresh();
       await loadMcpCandidates();
-      setMessage(`Deleted ${candidate.itemTitle || candidate.title} from ${name}.`);
+      setMessage(`Deleted ${group.title} from ${name}.`);
     }));
     mcpCandidatesEl.append(node);
   }
@@ -446,6 +499,133 @@ function renderSecretGroupCounts(groups) {
     el.textContent = String(groups[key] || 0);
   }
   renderSecretGroupButtons();
+}
+
+function groupCandidatesByItem(candidates) {
+  const map = new Map();
+  for (const candidate of candidates) {
+    const title = cleanItemTitle(candidate.itemTitle || stripFieldFromTitle(candidate.title) || "Untitled item");
+    const key = candidate.itemId || [
+      candidate.vaultId,
+      candidate.vaultName,
+      title,
+      candidate.category,
+    ].filter(Boolean).join("|");
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        title,
+        category: candidate.category,
+        type: groupFromCategory(candidate.category),
+        defaultSites: candidate.sites || [],
+        candidates: [],
+      });
+    }
+    const group = map.get(key);
+    group.candidates.push(candidate);
+    if (!group.defaultSites.length && candidate.sites?.length) {
+      group.defaultSites = candidate.sites;
+    }
+  }
+  return [...map.values()].map((group) => ({
+    ...group,
+    candidates: group.candidates.sort(compareCandidates),
+  }));
+}
+
+function formatMcpSummary(result, groups) {
+  const detailCount = result.shown || 0;
+  const itemCount = groups.length;
+  const label = approvalGroupLabel(result.activeGroup);
+  if (!itemCount) {
+    return `No ${label} items are ready to approve.`;
+  }
+  return `${itemCount} ${label} item${itemCount === 1 ? "" : "s"} ready. ${detailCount} detail${detailCount === 1 ? "" : "s"} found. Nothing is shared until you approve details.`;
+}
+
+function compareCandidates(a, b) {
+  return fieldSortRank(a) - fieldSortRank(b) || friendlyFieldName(a).localeCompare(friendlyFieldName(b));
+}
+
+function fieldSortRank(candidate) {
+  const order = {
+    username: 10,
+    password: 20,
+    api_credential: 20,
+    credit_card_name: 10,
+    credit_card_number: 20,
+    credit_card_expiry: 30,
+    credit_card_cvv: 80,
+    credit_card_pin: 90,
+    otp: 95,
+    ssh_private_key: 95,
+  };
+  return order[candidate.kind] || 50;
+}
+
+function fieldCopy(candidate) {
+  const label = friendlyFieldName(candidate);
+  const copy = {
+    password: ["Password", "Lets the agent fill the password for this login.", "Suggested", true, false],
+    username: ["Username", "Lets the agent fill or copy the username.", "Suggested", true, false],
+    otp: ["One-time code", "Short-lived login code. Approve only when the agent must complete sign-in.", "Extra sensitive", false, true],
+    api_credential: ["API key or token", "Lets the agent copy or paste this API credential.", "Suggested", true, false],
+    credit_card_name: ["Cardholder name", "Name printed on the card.", "Suggested", true, false],
+    credit_card_number: ["Card number", "Needed when an agent fills a payment form.", "Suggested", true, false],
+    credit_card_expiry: ["Expiry date", "Month and year printed on the card.", "Suggested", true, false],
+    credit_card_cvv: ["Security code (CVV)", "Extra sensitive. Approve only for payment flows you trust.", "Review carefully", false, true],
+    credit_card_pin: ["Card PIN", "Highly sensitive. Usually leave this unapproved.", "Do not suggest", false, true],
+    secure_note: ["Secure note text", "Allows the agent to read the note text.", "Review carefully", false, true],
+    ssh_private_key: ["SSH private key", "Allows the agent to use an SSH private key. Approve only for trusted local development.", "Extra sensitive", false, true],
+    license_key: ["License key", "Lets the agent copy or paste a software license key.", "Suggested", true, false],
+    text: [label, "Plain text stored on this item.", "Optional", false, false],
+    custom: [label, "Custom hidden field from this item.", "Review carefully", false, true],
+  }[candidate.kind] || [label, "Detail stored on this item.", "Optional", false, false];
+
+  return {
+    title: copy[0],
+    description: copy[1],
+    tag: copy[2],
+    suggested: copy[3],
+    sensitive: copy[4],
+  };
+}
+
+function groupIntro(group) {
+  if (group.type === "card") {
+    return "This is one copied card. Approve only the card details an agent really needs. CVV and PIN are not selected by default.";
+  }
+  if (group.type === "api") {
+    return "This is one copied API credential. Approve the token only for agents that should use it.";
+  }
+  if (group.type === "login") {
+    return "This is one copied login. Usually approve it only for the website where the account signs in.";
+  }
+  if (group.type === "note") {
+    return "This item may contain broad information. Read each detail name before approving it.";
+  }
+  return "This is one copied item. Choose the exact details agents may use.";
+}
+
+function groupBadge(group) {
+  if (group === "login") return "LOGIN";
+  if (group === "api") return "API";
+  if (group === "card") return "CARD";
+  if (group === "note") return "NOTE";
+  return "ITEM";
+}
+
+function isApprovedCandidate(candidate) {
+  return currentGrants.some((grant) => grantMatchesCandidate(grant, candidate));
+}
+
+function grantMatchesCandidate(grant, candidate) {
+  if (grant.kind !== candidate.kind) return false;
+  if (normalize(grant.fieldLabel) !== normalize(candidate.fieldLabel)) return false;
+  if (grant.itemId && candidate.itemId) return grant.itemId === candidate.itemId;
+  if (grant.itemTitle && candidate.itemTitle && normalize(grant.itemTitle) !== normalize(candidate.itemTitle)) return false;
+  if (grant.vaultName && candidate.vaultName && normalize(grant.vaultName) !== normalize(candidate.vaultName)) return false;
+  return true;
 }
 
 function renderProfile(entries) {
@@ -623,6 +803,37 @@ function formatCategory(value) {
   return String(value || "").replaceAll("_", " ").toLowerCase();
 }
 
+function friendlyFieldName(candidate) {
+  return String(candidate.fieldLabel || candidate.fieldId || "detail")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replaceAll("_", " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function stripFieldFromTitle(title) {
+  const value = String(title || "");
+  return value.replace(/\s+-\s+[^-]+$/, "").trim();
+}
+
+function cleanItemTitle(title) {
+  return String(title || "Untitled item")
+    .replace(/\bCreditCard\b/g, "Credit Card")
+    .replace(/\bApi\b/g, "API")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function groupFromCategory(category) {
+  const value = String(category || "").replaceAll(" ", "_").replaceAll("-", "_").toUpperCase();
+  if (value === "LOGIN" || value === "PASSWORD") return "login";
+  if (value === "API_CREDENTIAL") return "api";
+  if (value === "CREDIT_CARD") return "card";
+  if (value === "SECURE_NOTE" || value === "SSH_KEY") return "note";
+  return "other";
+}
+
 function groupLabel(group) {
   if (group === "login") return "login/password";
   if (group === "api") return "API key";
@@ -630,6 +841,10 @@ function groupLabel(group) {
   if (group === "note") return "note/SSH";
   if (group === "other") return "other";
   return "all";
+}
+
+function approvalGroupLabel(group) {
+  return group === "all" ? "copied" : groupLabel(group);
 }
 
 function empty(text) {

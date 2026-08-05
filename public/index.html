@@ -77,7 +77,7 @@
         <div class="panelHeader">
           <div>
             <h2>Choose From 1Password</h2>
-            <p class="hint">Search your normal vaults, then copy selected items into the agent vault.</p>
+            <p class="hint">Find an item in your normal vault. Copying it here does not share it with agents yet.</p>
           </div>
           <button id="loadSourceBtn" type="button">Search</button>
         </div>
@@ -114,9 +114,23 @@
         <div class="panelHeader">
           <div>
             <h2>Approve Agent Items</h2>
-            <p class="hint">Only fields already inside the agent vault can be approved for MCP use.</p>
+            <p class="hint">Items copied into the agent vault are private until you choose the exact details agents may use.</p>
           </div>
           <button id="loadMcpBtn" type="button">Refresh</button>
+        </div>
+        <div class="approvalExplainer" aria-label="How approval works">
+          <div>
+            <strong>1. Pick an item type</strong>
+            <span>Use the boxes below when you only want cards, API keys, logins, or notes.</span>
+          </div>
+          <div>
+            <strong>2. Choose details</strong>
+            <span>Open a copied item and tick only the fields an agent should be allowed to use.</span>
+          </div>
+          <div>
+            <strong>3. Limit websites</strong>
+            <span>Leave websites blank for any site, or type domains like checkout.example.</span>
+          </div>
         </div>
         <div class="secretTypeGrid" aria-label="Secret type filter">
           <button class="typeCard active" type="button" data-secret-group="all">
@@ -309,18 +323,29 @@
     </template>
 
     <template id="mcpCandidateTemplate">
-      <article class="item candidate">
-        <div class="itemMain">
-          <h3></h3>
-          <p class="meta"></p>
-          <label>
-            Allowed sites
-            <input class="sitesInput" placeholder="blank means all sites" />
-          </label>
+      <article class="approvalItem">
+        <div class="approvalHeader">
+          <div class="itemBadge" aria-hidden="true"></div>
+          <div class="approvalTitle">
+            <h3></h3>
+            <p class="approvalPlain"></p>
+            <p class="meta"></p>
+          </div>
         </div>
-        <div class="actions">
-          <button class="approveBtn" type="button">Approve</button>
-          <button class="deleteItemBtn danger" type="button">Delete</button>
+        <div class="approvalNotice">
+          <strong>Nothing is shared yet.</strong>
+          <span>Select the details below, then approve them. The agent still never sees the raw value until a local copy or paste happens.</span>
+        </div>
+        <label class="siteScope">
+          Websites where agents may use this item
+          <input class="sitesInput" placeholder="Leave empty for any website, or type domains like revolut.com" />
+          <small>For most logins, add the website. For general cards or reusable API keys, blank means any website.</small>
+        </label>
+        <div class="fieldList" aria-label="Details inside this item"></div>
+        <div class="approvalActions">
+          <button class="approveSelectedBtn" type="button">Approve Selected</button>
+          <button class="selectRecommendedBtn secondary" type="button">Select Suggested</button>
+          <button class="deleteItemBtn danger" type="button">Delete Item</button>
         </div>
       </article>
     </template>

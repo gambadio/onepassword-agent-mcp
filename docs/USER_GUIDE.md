@@ -63,7 +63,7 @@ Use **Move** only when you want the item removed from the source vault. 1Passwor
 
 ## Step 3: Approve Agent Fields
 
-After an item is inside `MCPVAULT`, its approvable fields appear under **Approve Agent Items**.
+After an item is inside `MCPVAULT`, it appears under **Approve Agent Items**. Nothing is shared with agents yet.
 
 Use the boxes at the top of that panel to manage each type independently:
 
@@ -73,20 +73,26 @@ Use the boxes at the top of that panel to manage each type independently:
 - **Notes & SSH** for secure notes and SSH keys.
 - **Other** for remaining supported concealed/custom fields.
 
-1. Search the agent vault.
-2. Enter allowed sites, such as:
+Think of this section as a checklist:
+
+1. Pick the type box you want, such as **Credit Cards**.
+2. Find the copied item. It appears once, even if it contains several fields.
+3. Read the simple field names and tick only what the agent may use.
+4. Enter allowed sites, such as:
 
 ```text
 github.com, *.github.com
 ```
 
-Leave allowed sites blank when the field may be used on any URL.
+Leave allowed sites blank when the approved details may be used on any URL.
 
-3. Click **Approve**.
+5. Click **Approve Selected**.
+
+For credit cards, suggested details are usually cardholder name, card number, and expiry date. CVV and PIN are shown separately and are not suggested by default.
 
 ![Approve sites](screenshots/approve-sites.svg)
 
-Approved fields appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP copy/paste tools do not return plaintext field values.
+Approved details appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP copy/paste tools do not return plaintext field values.
 
 Supported fields include normal login passwords, API credentials, credit-card number/CVV/expiry fields, secure-note text, SSH private keys, and many custom concealed fields.
 

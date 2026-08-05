@@ -1,54 +1,89 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="560" viewBox="0 0 1120 560" role="img" aria-labelledby="title desc">
-  <title id="title">Approve sites for an MCPVAULT field</title>
-  <desc id="desc">Example showing an item field in MCPVAULT being approved for specific websites.</desc>
-  <rect width="1120" height="560" fill="#f4f6f8"/>
-  <rect x="32" y="32" width="1056" height="496" rx="10" fill="#ffffff" stroke="#d7dee8"/>
-  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Approve only the sites an agent may use</text>
-  <text x="56" y="96" fill="#627084" font-family="Arial, sans-serif" font-size="14">The MCP checks the expected site again before copying or pasting.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="620" viewBox="0 0 1120 620" role="img" aria-labelledby="title desc">
+  <title id="title">Approve details for a copied 1Password item</title>
+  <desc id="desc">Example showing a copied credit card grouped as one item with selectable fields and website scope.</desc>
+  <rect width="1120" height="620" fill="#f4f6f8"/>
+  <rect x="32" y="32" width="1056" height="556" rx="10" fill="#ffffff" stroke="#d7dee8"/>
+  <text x="56" y="70" fill="#1e2633" font-family="Arial, sans-serif" font-size="22" font-weight="700">Approve only the details an agent may use</text>
+  <text x="56" y="96" fill="#627084" font-family="Arial, sans-serif" font-size="14">Copying an item into MCPVAULT does not share it yet. The user chooses fields first.</text>
 
-  <rect x="56" y="136" width="492" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
-  <text x="78" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Approve Agent Items</text>
-  <rect x="78" y="194" width="320" height="36" rx="6" fill="#ffffff" stroke="#d7dee8"/>
-  <text x="92" y="217" fill="#627084" font-family="Arial, sans-serif" font-size="13">github</text>
-  <rect x="414" y="194" width="92" height="36" rx="6" fill="#147d73"/>
-  <text x="460" y="217" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Refresh</text>
-  <g transform="translate(78 244)">
-    <rect width="82" height="34" rx="8" fill="#e9f7f4" stroke="#147d73"/>
-    <text x="41" y="22" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="12" font-weight="700">All · 6</text>
-    <rect x="94" width="98" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
-    <text x="143" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Logins · 2</text>
-    <rect x="204" width="110" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
-    <text x="259" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">API Keys · 2</text>
-    <rect x="326" width="102" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
-    <text x="377" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Cards · 1</text>
+  <g transform="translate(56 126)">
+    <rect width="320" height="72" rx="8" fill="#f5fbfa" stroke="#c8e3df"/>
+    <text x="16" y="26" fill="#0f5f58" font-family="Arial, sans-serif" font-size="13" font-weight="700">1. Pick an item type</text>
+    <text x="16" y="48" fill="#627084" font-family="Arial, sans-serif" font-size="12">Use the boxes for cards, API keys, logins, or notes.</text>
   </g>
-  <g transform="translate(78 306)">
-    <rect width="428" height="142" rx="8" fill="#ffffff" stroke="#94bdb8"/>
-    <text x="18" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">GitHub API Token</text>
-    <text x="18" y="54" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | field: credential</text>
-    <text x="18" y="85" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Allowed sites</text>
-    <rect x="18" y="96" width="284" height="34" rx="6" fill="#ffffff" stroke="#147d73"/>
-    <text x="32" y="118" fill="#1e2633" font-family="Arial, sans-serif" font-size="13">github.com, *.github.com</text>
-    <rect x="316" y="96" width="92" height="34" rx="6" fill="#147d73"/>
-    <text x="362" y="118" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Approve</text>
+  <g transform="translate(400 126)">
+    <rect width="320" height="72" rx="8" fill="#f5fbfa" stroke="#c8e3df"/>
+    <text x="16" y="26" fill="#0f5f58" font-family="Arial, sans-serif" font-size="13" font-weight="700">2. Choose details</text>
+    <text x="16" y="48" fill="#627084" font-family="Arial, sans-serif" font-size="12">Tick only what the agent should be allowed to use.</text>
+  </g>
+  <g transform="translate(744 126)">
+    <rect width="320" height="72" rx="8" fill="#f5fbfa" stroke="#c8e3df"/>
+    <text x="16" y="26" fill="#0f5f58" font-family="Arial, sans-serif" font-size="13" font-weight="700">3. Limit websites</text>
+    <text x="16" y="48" fill="#627084" font-family="Arial, sans-serif" font-size="12">Blank means any website. Domains limit where it works.</text>
   </g>
 
-  <rect x="572" y="136" width="492" height="336" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
-  <text x="594" y="170" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Allowed For Agents</text>
-  <rect x="944" y="150" width="76" height="26" rx="13" fill="#eef5f4"/>
-  <text x="982" y="168" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="12" font-weight="700">1 total</text>
-  <g transform="translate(594 208)">
-    <rect width="428" height="142" rx="8" fill="#ffffff" stroke="#d7dee8"/>
-    <text x="18" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">GitHub Work Login</text>
-    <text x="18" y="54" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | field: password</text>
-    <text x="18" y="85" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Allowed sites</text>
-    <rect x="18" y="96" width="266" height="34" rx="6" fill="#ffffff" stroke="#d7dee8"/>
-    <text x="32" y="118" fill="#1e2633" font-family="Arial, sans-serif" font-size="13">github.com, *.github.com</text>
-    <rect x="298" y="96" width="62" height="34" rx="6" fill="#ffffff" stroke="#147d73"/>
-    <text x="329" y="118" text-anchor="middle" fill="#147d73" font-family="Arial, sans-serif" font-size="13" font-weight="700">Save</text>
-    <rect x="370" y="96" width="38" height="34" rx="6" fill="#ffffff" stroke="#b42318"/>
-    <text x="389" y="118" text-anchor="middle" fill="#b42318" font-family="Arial, sans-serif" font-size="13" font-weight="700">Del</text>
+  <text x="56" y="238" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Approve Agent Items</text>
+  <rect x="936" y="214" width="92" height="36" rx="6" fill="#147d73"/>
+  <text x="982" y="237" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Refresh</text>
+
+  <g transform="translate(56 260)">
+    <rect width="112" height="62" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="14" y="26" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">All Fields</text>
+    <text x="14" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">1</text>
+    <rect x="124" width="112" height="62" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="138" y="26" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Logins</text>
+    <text x="138" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">0</text>
+    <rect x="248" width="112" height="62" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="262" y="26" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">API Keys</text>
+    <text x="262" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">0</text>
+    <rect x="372" width="122" height="62" rx="8" fill="#eef5f4" stroke="#147d73"/>
+    <text x="386" y="26" fill="#0f5f58" font-family="Arial, sans-serif" font-size="12" font-weight="700">Credit Cards</text>
+    <text x="386" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">1</text>
+    <rect x="506" width="122" height="62" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="520" y="26" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Notes and SSH</text>
+    <text x="520" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">0</text>
+    <rect x="640" width="112" height="62" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="654" y="26" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Other</text>
+    <text x="654" y="46" fill="#627084" font-family="Arial, sans-serif" font-size="12">0</text>
   </g>
-  <path d="M532 326 h54" stroke="#147d73" stroke-width="4" stroke-linecap="round"/>
-  <path d="M586 326 l-18 -10 v20 z" fill="#147d73"/>
+
+  <text x="56" y="352" fill="#627084" font-family="Arial, sans-serif" font-size="13">1 credit-card item ready. 5 details found. Nothing is shared until you approve details.</text>
+
+  <g transform="translate(56 376)">
+    <rect width="1008" height="176" rx="8" fill="#ffffff" stroke="#d7dee8"/>
+    <rect x="16" y="16" width="42" height="42" rx="8" fill="#eef5f4"/>
+    <text x="37" y="42" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="10" font-weight="900">CARD</text>
+    <text x="72" y="30" fill="#1e2633" font-family="Arial, sans-serif" font-size="16" font-weight="700">Revolut Card</text>
+    <text x="72" y="52" fill="#344054" font-family="Arial, sans-serif" font-size="12">Approve only the card details an agent really needs. CVV and PIN are not selected by default.</text>
+    <rect x="72" y="68" width="612" height="34" rx="6" fill="#ffffff" stroke="#d7dee8"/>
+    <text x="86" y="90" fill="#627084" font-family="Arial, sans-serif" font-size="12">Websites: blank means any website, or type domains like checkout.example</text>
+
+    <g transform="translate(72 116)">
+      <rect width="172" height="38" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+      <rect x="12" y="11" width="16" height="16" rx="3" fill="#147d73"/>
+      <path d="M15 19l4 4 8-10" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <text x="38" y="24" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Cardholder name</text>
+      <rect x="184" width="150" height="38" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+      <rect x="196" y="11" width="16" height="16" rx="3" fill="#147d73"/>
+      <path d="M199 19l4 4 8-10" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <text x="222" y="24" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Card number</text>
+      <rect x="346" width="132" height="38" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
+      <rect x="358" y="11" width="16" height="16" rx="3" fill="#147d73"/>
+      <path d="M361 19l4 4 8-10" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+      <text x="384" y="24" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">Expiry date</text>
+      <rect x="490" width="152" height="38" rx="8" fill="#fffaf0" stroke="#f1c27d"/>
+      <rect x="502" y="11" width="16" height="16" rx="3" fill="#ffffff" stroke="#aab7c7"/>
+      <text x="526" y="24" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">CVV</text>
+      <text x="558" y="24" fill="#8a5a00" font-family="Arial, sans-serif" font-size="11" font-weight="700">review</text>
+      <rect x="654" width="124" height="38" rx="8" fill="#fffaf0" stroke="#f1c27d"/>
+      <rect x="666" y="11" width="16" height="16" rx="3" fill="#ffffff" stroke="#aab7c7"/>
+      <text x="690" y="24" fill="#1e2633" font-family="Arial, sans-serif" font-size="12" font-weight="700">PIN</text>
+      <text x="722" y="24" fill="#8a5a00" font-family="Arial, sans-serif" font-size="11" font-weight="700">usually no</text>
+    </g>
+
+    <rect x="812" y="118" width="138" height="36" rx="6" fill="#147d73"/>
+    <text x="881" y="141" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Approve Selected</text>
+    <rect x="960" y="118" width="32" height="36" rx="6" fill="#ffffff" stroke="#b42318"/>
+    <text x="976" y="141" text-anchor="middle" fill="#b42318" font-family="Arial, sans-serif" font-size="12" font-weight="700">Del</text>
+  </g>
 </svg>

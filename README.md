@@ -111,7 +111,7 @@ The console is a small workbench:
 - **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
 - **Vault Workbench** lets you drag a source item into the agent vault.
 - **Choose From 1Password** searches your normal vaults and can filter by item type.
-- **Approve Agent Items** has independent lanes for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
+- **Approve Agent Items** groups copied items into simple checklists for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
 - **Allowed For Agents** is the final allow list MCP clients can use.
 - **Profile Data For Agents** stores profile values agents may read directly, such as email, phone, address, name, or company.
 
@@ -119,7 +119,7 @@ The console is a small workbench:
 
 Copy is the safe default. Copy now uses 1Password's revealed JSON clone pipe so the destination item keeps the original fields. Move is available, but 1Password creates a new item in the destination vault and deletes the original item from the source vault.
 
-Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
+After copying, nothing is shared with agents yet. Open the copied item on the approval side, tick only the details the agent may use, then click **Approve Selected**. Credit cards show normal checkout details separately from sensitive details like CVV or PIN. Blank allowed-sites fields mean the approved item may be used on all URLs. Items in `MCPVAULT` can also be deleted from the approval console after a confirmation prompt.
 
 ## Client Setup
 

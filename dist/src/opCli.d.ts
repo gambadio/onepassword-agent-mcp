@@ -15,6 +15,7 @@ export declare class OpCli {
         currentVault: string;
         destinationVault: string;
         category?: string;
+        title?: string;
     }): Promise<void>;
     moveItemToVault(input: {
         itemId: string;

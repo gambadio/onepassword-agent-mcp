@@ -277,32 +277,69 @@ export class PolicyService {
             throw new Error(`Only items in ${policy.settings.mcpVaultName} can be approved for agents.`);
         }
         const key = await loadOrCreateKey();
-        const id = randomId("grant");
         const now = new Date().toISOString();
-        const encryptedRef = sealJson({
-            grantId: id,
-            secretRef: input.secretRef,
-            kind: input.kind,
-            issuedAt: now,
-        }, key);
-        const grant = {
-            id,
-            title: input.title,
-            username: input.username,
-            vaultId: input.vaultId,
-            vaultName: input.vaultName,
-            itemId: input.itemId,
-            itemTitle: input.itemTitle,
-            fieldLabel: input.fieldLabel,
-            kind: input.kind,
-            encryptedRef,
-            sites: input.sites,
-            enabled: input.enabled,
-            createdAt: now,
-            updatedAt: now,
-            note: input.note,
-        };
+        let grant;
         await this.store.update((policy) => {
+            const existing = policy.grants.find((candidate) => {
+                if (candidate.kind !== input.kind)
+                    return false;
+                try {
+                    return openJson(candidate.encryptedRef, key).secretRef === input.secretRef;
+                }
+                catch {
+                    return false;
+                }
+            });
+            if (existing) {
+                grant = {
+                    ...existing,
+                    title: input.title,
+                    username: input.username,
+                    vaultId: input.vaultId,
+                    vaultName: input.vaultName,
+                    itemId: input.itemId,
+                    itemTitle: input.itemTitle,
+                    fieldLabel: input.fieldLabel,
+                    sites: input.sites,
+                    enabled: input.enabled,
+                    note: input.note ?? existing.note,
+                    updatedAt: now,
+                };
+                policy.grants = policy.grants.map((item) => (item.id === existing.id ? grant : item));
+                policy.audit.unshift({
+                    id: randomId("audit"),
+                    type: "grant.updated",
+                    grantId: grant.id,
+                    message: `Updated grant ${grant.title}`,
+                    createdAt: now,
+                });
+                policy.audit = policy.audit.slice(0, 200);
+                return;
+            }
+            const id = randomId("grant");
+            const encryptedRef = sealJson({
+                grantId: id,
+                secretRef: input.secretRef,
+                kind: input.kind,
+                issuedAt: now,
+            }, key);
+            grant = {
+                id,
+                title: input.title,
+                username: input.username,
+                vaultId: input.vaultId,
+                vaultName: input.vaultName,
+                itemId: input.itemId,
+                itemTitle: input.itemTitle,
+                fieldLabel: input.fieldLabel,
+                kind: input.kind,
+                encryptedRef,
+                sites: input.sites,
+                enabled: input.enabled,
+                createdAt: now,
+                updatedAt: now,
+                note: input.note,
+            };
             policy.grants.push(grant);
             policy.audit.unshift({
                 id: randomId("audit"),
@@ -327,7 +364,9 @@ export class PolicyService {
             id: grant.id,
             title: grant.title,
             username: grant.username,
+            vaultId: grant.vaultId,
             vaultName: grant.vaultName,
+            itemId: grant.itemId,
             itemTitle: grant.itemTitle,
             fieldLabel: grant.fieldLabel,
             kind: grant.kind,

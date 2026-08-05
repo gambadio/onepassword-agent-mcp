@@ -68,6 +68,7 @@ export class OpCli {
     currentVault: string;
     destinationVault: string;
     category?: string;
+    title?: string;
   }): Promise<void> {
     const sourceArgs = [
       "item",
@@ -87,19 +88,19 @@ export class OpCli {
       if (!input.category || !/category/i.test(message)) {
         throw error;
       }
-      await this.pipeOp(
-        sourceArgs,
-        [
-          "item",
-          "create",
-          "--category",
-          createCategory(input.category),
-          "--vault",
-          input.destinationVault,
-          "-",
-        ],
-        90_000,
-      );
+      const fallbackArgs = [
+        "item",
+        "create",
+        "--category",
+        createCategory(input.category),
+        "--vault",
+        input.destinationVault,
+      ];
+      if (input.title?.trim()) {
+        fallbackArgs.push("--title", input.title.trim());
+      }
+      fallbackArgs.push("-");
+      await this.pipeOp(sourceArgs, fallbackArgs, 90_000);
     }
   }
 
@@ -256,7 +257,9 @@ export class OpCli {
         token: sealJson(payload, key),
         title,
         username: payload.username,
+        vaultId,
         vaultName,
+        itemId: item.id,
         itemTitle: item.title,
         fieldLabel,
         fieldId: field.id,

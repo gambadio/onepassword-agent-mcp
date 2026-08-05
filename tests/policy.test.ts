@@ -47,6 +47,29 @@ test("blank allowed sites approve an item for every URL", async () => {
   });
 });
 
+test("duplicate approvals update the existing grant", async () => {
+  await withTempHome(async () => {
+    const policy = new PolicyService(new StateStore());
+    const first = await policy.createManual({
+      title: "Card Number",
+      secretRef: "op://MCPVAULT/Revolut Card/ccnum",
+      sites: ["checkout.example"],
+      kind: "credit_card_number",
+    });
+    const second = await policy.createManual({
+      title: "Card Number",
+      secretRef: "op://MCPVAULT/Revolut Card/ccnum",
+      sites: ["shop.example"],
+      kind: "credit_card_number",
+    });
+
+    const publicGrants = await policy.listPublicGrants();
+    assert.equal(second.id, first.id);
+    assert.equal(publicGrants.length, 1);
+    assert.deepEqual(publicGrants[0].sites, ["shop.example"]);
+  });
+});
+
 test("profile entries honor site allow lists", async () => {
   await withTempHome(async () => {
     const policy = new PolicyService(new StateStore());

@@ -142,7 +142,9 @@ export interface Candidate {
   token: string;
   title: string;
   username?: string;
+  vaultId?: string;
   vaultName?: string;
+  itemId?: string;
   itemTitle?: string;
   fieldLabel: string;
   fieldId?: string;
@@ -167,7 +169,9 @@ export interface PublicGrant {
   id: string;
   title: string;
   username?: string;
+  vaultId?: string;
   vaultName?: string;
+  itemId?: string;
   itemTitle?: string;
   fieldLabel: string;
   kind: SecretKind;
