@@ -173,6 +173,45 @@ test("deleteItem scopes deletion to the provided vault", async () => {
   }
 });
 
+test("moveItemToVault scopes source and destination vaults", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
+  const fakeOp = path.join(dir, "op-fake.js");
+  const logFile = path.join(dir, "calls.jsonl");
+  const previousLog = process.env.OPMCP_TEST_LOG;
+  await fs.writeFile(fakeOp, fakeOpScript(), { mode: 0o755 });
+  process.env.OPMCP_TEST_LOG = logFile;
+
+  try {
+    const op = new OpCli({
+      ...testSettings,
+      opPath: fakeOp,
+    });
+    await op.moveItemToVault({
+      itemId: "item_789",
+      currentVault: "MCPVAULT",
+      destinationVault: "Personal",
+    });
+
+    const calls = (await fs.readFile(logFile, "utf8"))
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line) as { args: string[] });
+    assert.deepEqual(calls[0].args, [
+      "item",
+      "move",
+      "item_789",
+      "--current-vault",
+      "MCPVAULT",
+      "--destination-vault",
+      "Personal",
+    ]);
+  } finally {
+    if (previousLog === undefined) delete process.env.OPMCP_TEST_LOG;
+    else process.env.OPMCP_TEST_LOG = previousLog;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("listCandidates exposes approvable fields for API credentials and credit cards", async () => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
   const fakeOp = path.join(dir, "op-fake.js");
@@ -359,6 +398,12 @@ if (args[0] === "item" && args[1] === "list") {
   });
 } else if (args[0] === "item" && args[1] === "delete") {
   if (!args.includes("--vault")) {
+    process.stderr.write("missing vault");
+    process.exit(1);
+  }
+  process.exit(0);
+} else if (args[0] === "item" && args[1] === "move") {
+  if (!args.includes("--current-vault") || !args.includes("--destination-vault")) {
     process.stderr.write("missing vault");
     process.exit(1);
   }

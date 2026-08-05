@@ -129,13 +129,21 @@ Leave allowed sites blank when an entry may be used on all URLs.
 
 Approved entries appear under **Allowed For Agents**. Agents can use only enabled approvals.
 
-## 9. Add Optional Profile Data
+## 9. Save Agent-Created Items Elsewhere
+
+When an agent creates a new credential, it is saved into `MCPVAULT`.
+
+To keep it in a normal vault, open the item under **Approve Agent Items**, choose a destination under **Save this item to another vault**, then use **Copy To Vault** or **Move To Vault**.
+
+Copy keeps the `MCPVAULT` version. Move removes it from `MCPVAULT` and removes local approvals for that copied item.
+
+## 10. Add Optional Profile Data
 
 Use **Profile Data For Agents** to define email, phone, address, name, company, username, or custom text values that agents may retrieve directly.
 
 Profile data is local to this app. It is not read from 1Password. Blank allowed sites means a profile value may be returned for any site.
 
-## 10. Test With An Agent
+## 11. Test With An Agent
 
 Ask the agent to:
 

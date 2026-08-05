@@ -347,6 +347,20 @@
             <small>For most logins, add the website. For general cards or reusable API keys, blank means any website.</small>
           </label>
           <div class="fieldList" aria-label="Details inside this item"></div>
+          <div class="vaultExport">
+            <div>
+              <strong>Save this item to another vault</strong>
+              <span>Use this after an agent creates a new credential. Copy keeps the agent-vault copy. Move removes it from the agent vault and removes local approvals.</span>
+            </div>
+            <label>
+              Destination vault
+              <select class="destinationVaultSelect"></select>
+            </label>
+            <div class="vaultExportActions">
+              <button class="copyOutBtn secondary" type="button">Copy To Vault</button>
+              <button class="moveOutBtn secondaryDanger" type="button">Move To Vault</button>
+            </div>
+          </div>
           <div class="approvalActions">
             <button class="approveSelectedBtn" type="button">Approve Selected</button>
             <button class="selectRecommendedBtn secondary" type="button">Select Suggested</button>

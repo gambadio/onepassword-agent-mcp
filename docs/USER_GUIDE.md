@@ -97,6 +97,19 @@ Approved details appear under **Allowed For Agents**. Agents can request encrypt
 
 Supported fields include normal login passwords, API credentials, credit-card number/CVV/expiry fields, secure-note text, SSH private keys, and many custom concealed fields.
 
+## Save Agent-Created Items To A Normal Vault
+
+If you enable **Allow agents to save new items into MCPVAULT**, the agent can create a login, API key, secure note, credit card, or password item. It is saved into the agent vault first, not your normal vaults.
+
+When you trust the new item:
+
+1. Open **Approve Agent Items**.
+2. Click **Review Details** on the item.
+3. Choose a destination under **Save this item to another vault**.
+4. Click **Copy To Vault** to keep the agent-vault copy, or **Move To Vault** to remove it from `MCPVAULT`.
+
+Moving an item out of `MCPVAULT` also removes local agent approvals for that copied item.
+
 ## Step 4: Add Profile Data
 
 Use **Profile Data For Agents** when an agent needs contact or identity details that are not a 1Password secret field:

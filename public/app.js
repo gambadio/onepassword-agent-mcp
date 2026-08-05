@@ -430,6 +430,13 @@ function renderMcpCandidates(result) {
     const sitesInput = node.querySelector(".sitesInput");
     sitesInput.value = group.defaultSites.join(", ");
     const fieldList = node.querySelector(".fieldList");
+    const destinationVaultSelect = node.querySelector(".destinationVaultSelect");
+    const copyOutButton = node.querySelector(".copyOutBtn");
+    const moveOutButton = node.querySelector(".moveOutBtn");
+    renderDestinationVaultOptions(destinationVaultSelect);
+    const canExport = destinationVaultSelect.options.length > 1;
+    copyOutButton.disabled = !canExport;
+    moveOutButton.disabled = !canExport;
     for (const [index, candidate] of group.candidates.entries()) {
       const copy = fieldCopy(candidate);
       const approved = isApprovedCandidate(candidate);
@@ -465,6 +472,16 @@ function renderMcpCandidates(result) {
       }
       setMessage("Selected the suggested details. Review them, then approve.");
     });
+    copyOutButton.addEventListener("click", () => runAction(async () => {
+      await transferMcpItemToVault(group, destinationVaultSelect.value, "copy");
+    }));
+    moveOutButton.addEventListener("click", () => runAction(async () => {
+      const destination = selectedVaultLabel(destinationVaultSelect);
+      const name = currentStatus?.settings?.mcpVaultName || "MCPVAULT";
+      const ok = window.confirm(`Move "${group.title}" to ${destination}?\n\nThis removes the item from ${name}. Agents will no longer be able to use it from the agent vault, and local approvals for this copied item will be removed.`);
+      if (!ok) return;
+      await transferMcpItemToVault(group, destinationVaultSelect.value, "move");
+    }));
     approveButton.addEventListener("click", () => runAction(async () => {
       const sites = splitCsv(sitesInput.value);
       const selected = [...fieldList.querySelectorAll("input[type='checkbox']")]
@@ -502,6 +519,56 @@ function renderMcpCandidates(result) {
     }));
     mcpCandidatesEl.append(node);
   }
+}
+
+function renderDestinationVaultOptions(select) {
+  const selected = select.value;
+  const mcpVault = currentStatus?.cli?.mcpVault || {};
+  const vaults = currentStatus?.cli?.vaults || [];
+  select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = currentStatus?.cli?.authError ? "1Password unavailable" : "Choose destination";
+  select.append(placeholder);
+  for (const vault of vaults) {
+    const value = vault.id || vault.name;
+    if (!value) continue;
+    if (vaultEquals(vault, mcpVault)) continue;
+    const option = document.createElement("option");
+    option.value = value;
+    const count = typeof vault.items === "number" ? ` (${vault.items})` : "";
+    option.textContent = `${vault.name || vault.id}${count}`;
+    select.append(option);
+  }
+  const stillExists = [...select.options].some((option) => option.value === selected);
+  if (stillExists) {
+    select.value = selected;
+  } else if (select.options.length > 1) {
+    select.selectedIndex = 1;
+  }
+  select.disabled = select.options.length <= 1;
+}
+
+async function transferMcpItemToVault(group, destinationVault, mode) {
+  if (!destinationVault) {
+    setMessage("Choose a destination vault first.", true);
+    return;
+  }
+  const destination = selectedVaultNameByValue(destinationVault);
+  await api("/api/op/mcp-vault/items/transfer", {
+    method: "POST",
+    body: JSON.stringify({
+      token: group.candidates[0].token,
+      destinationVault,
+      mode,
+    }),
+  });
+  if (mode === "move") {
+    expandedApprovalItems.delete(group.key);
+  }
+  await refresh();
+  await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
+  setMessage(`${mode === "move" ? "Moved" : "Copied"} ${group.title} ${mode === "move" ? "to" : "into"} ${destination}.`);
 }
 
 function renderSecretGroupButtons() {
@@ -877,6 +944,20 @@ function cleanItemTitle(title) {
     .replace(/\bApi\b/g, "API")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function vaultEquals(vault, target) {
+  const values = [vault.id, vault.name].map(normalize).filter(Boolean);
+  return [target.id, target.name].map(normalize).filter(Boolean).some((value) => values.includes(value));
+}
+
+function selectedVaultLabel(select) {
+  return select.selectedOptions[0]?.textContent?.replace(/\s+\(\d+\)$/, "") || "the selected vault";
+}
+
+function selectedVaultNameByValue(value) {
+  const vault = (currentStatus?.cli?.vaults || []).find((candidate) => candidate.id === value || candidate.name === value);
+  return vault?.name || vault?.id || "the selected vault";
 }
 
 function groupFromCategory(category) {

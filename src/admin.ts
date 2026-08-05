@@ -293,6 +293,67 @@ export async function createAdminApp() {
     res.json({ ok: true, deletedGrants });
   });
 
+  app.post("/api/op/mcp-vault/items/transfer", async (req, res) => {
+    const mode = req.body.mode === "move" ? "move" : "copy";
+    const destinationInput = requireString(req.body.destinationVault, "destinationVault");
+    const file = await store.load();
+    const key = await loadOrCreateKey();
+    const candidate = openJson<CandidatePayload>(requireString(req.body.token, "token"), key);
+    if (!candidate.itemId) {
+      throw new Error("This item cannot be transferred because 1Password did not return an item ID.");
+    }
+
+    const op = new OpCli(file.settings);
+    const vaults = await op.listVaults();
+    const mcpVault = describeMcpVault(file, vaults);
+    if (!mcpVault.exists) {
+      throw new Error(`Create ${file.settings.mcpVaultName} first.`);
+    }
+    if (!candidateTargetsVault(candidate, mcpVault)) {
+      throw new Error(`Only items in ${file.settings.mcpVaultName} can be copied or moved out.`);
+    }
+
+    const destination = findVault(vaults, destinationInput);
+    if (!destination) {
+      throw new Error("Choose an existing destination vault.");
+    }
+    if (vaultMatches(destination, mcpVault)) {
+      throw new Error(`Choose a vault other than ${file.settings.mcpVaultName}.`);
+    }
+
+    const currentVault = mcpVault.id || mcpVault.name;
+    const destinationVault = destination.id || destination.name;
+    if (!currentVault || !destinationVault) {
+      throw new Error("1Password did not return enough vault information to transfer this item.");
+    }
+
+    if (mode === "move") {
+      await op.moveItemToVault({
+        itemId: candidate.itemId,
+        currentVault,
+        destinationVault,
+      });
+    } else {
+      await op.copyItemToVault({
+        itemId: candidate.itemId,
+        currentVault,
+        destinationVault,
+        category: candidate.category,
+        title: candidate.itemTitle || candidate.title,
+      });
+    }
+
+    let deletedGrants = 0;
+    if (mode === "move") {
+      deletedGrants = await policyService.deleteGrantsForItem(candidate.itemId, candidate.vaultId, candidate.vaultName);
+    }
+    await store.addAudit({
+      type: mode === "move" ? "item.moved" : "item.copied",
+      message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} from ${file.settings.mcpVaultName} to ${destination.name || destination.id}.`,
+    });
+    res.status(201).json({ ok: true, mode, destination, deletedGrants });
+  });
+
   app.use(express.static(publicDir()));
   app.get("/{*splat}", (_req, res) => {
     res.sendFile(path.join(publicDir(), "index.html"));
@@ -399,6 +460,11 @@ function describeMcpVault(file: PolicyFile, vaults: OpVaultSummary[]) {
 function findVault(vaults: OpVaultSummary[], nameOrId: string): OpVaultSummary | undefined {
   const expected = normalizeVault(nameOrId);
   return vaults.find((vault) => normalizeVault(vault.name) === expected || normalizeVault(vault.id) === expected);
+}
+
+function vaultMatches(left: OpVaultSummary, right: { id?: string; name?: string }): boolean {
+  const rightValues = [right.id, right.name].map(normalizeVault).filter(Boolean);
+  return [left.id, left.name].map(normalizeVault).filter(Boolean).some((value) => rightValues.includes(value));
 }
 
 function candidateTargetsVault(

@@ -587,6 +587,40 @@ h3 {
   opacity: 0.8;
 }
 
+.vaultExport {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.vaultExport div:first-child {
+  display: grid;
+  gap: 4px;
+  align-self: center;
+}
+
+.vaultExport strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.vaultExport span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.vaultExportActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .approvalActions {
   display: flex;
   align-items: center;
@@ -710,6 +744,16 @@ button.danger:hover {
   background: #fff3f0;
 }
 
+button.secondaryDanger {
+  border-color: var(--danger);
+  background: #fff;
+  color: var(--danger);
+}
+
+button.secondaryDanger:hover {
+  background: #fff3f0;
+}
+
 .audit {
   display: grid;
   gap: 6px;
@@ -752,6 +796,14 @@ button.danger:hover {
     justify-content: flex-start;
     min-width: 0;
     flex-wrap: wrap;
+  }
+
+  .vaultExport {
+    grid-template-columns: 1fr;
+  }
+
+  .vaultExportActions {
+    justify-content: flex-start;
   }
 
   .actions {

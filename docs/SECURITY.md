@@ -99,6 +99,8 @@ The approval view can expose approvable fields from logins, passwords, API crede
 
 The `save_secret_item` MCP tool can create new Login, Password, API Credential, Secure Note, and Credit Card items in `MCPVAULT` after **Allow agents to save new items into MCPVAULT** is enabled in local settings. Sensitive values are sent to `op item create` through stdin as a JSON template, not command arguments.
 
+The admin console can later copy or move an item from `MCPVAULT` to another existing 1Password vault. This action is human-driven in the local console. Copy keeps the `MCPVAULT` item and its approvals; move removes the `MCPVAULT` item and removes local approvals for that copied item.
+
 Keep this off unless you want connected MCP clients to be able to create new items in the agent vault.
 
 ## Profile Data
