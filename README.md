@@ -110,8 +110,8 @@ The console is a small workbench:
 
 - **Agent Vault Setup** checks whether `MCPVAULT` exists and can create it.
 - **Vault Workbench** lets you drag a source item into the agent vault.
-- **Choose From 1Password** searches your normal vaults.
-- **Approve Agent Items** shows approvable fields already in `MCPVAULT`.
+- **Choose From 1Password** searches your normal vaults and can filter by item type.
+- **Approve Agent Items** has independent lanes for logins, API keys, credit cards, notes, and other fields already in `MCPVAULT`.
 - **Allowed For Agents** is the final allow list MCP clients can use.
 - **Profile Data For Agents** stores profile values agents may read directly, such as email, phone, address, name, or company.
 

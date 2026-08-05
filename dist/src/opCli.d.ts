@@ -1,4 +1,4 @@
-import type { Candidate, CandidateMode, CandidateSearchResult, CreateSecretItemInput, OpItemDetail, OpVaultSummary, Settings } from "./types.js";
+import type { Candidate, CandidateGroup, CandidateMode, CandidateSearchResult, CreateSecretItemInput, OpItemDetail, OpVaultSummary, Settings } from "./types.js";
 interface RunResult {
     stdout: string;
     stderr: string;
@@ -33,6 +33,7 @@ export declare class OpCli {
         query?: string;
         key: Buffer;
         mode?: CandidateMode;
+        group?: CandidateGroup;
     }): Promise<CandidateSearchResult>;
     getItem(item: string, vault?: string): Promise<OpItemDetail>;
     itemToCandidates(item: OpItemDetail, key: Buffer, fallbackVault?: string, mode?: CandidateMode): Candidate[];

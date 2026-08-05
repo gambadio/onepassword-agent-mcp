@@ -7,7 +7,7 @@ import { OpCli } from "./opCli.js";
 import { publicDir } from "./paths.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
-import type { CandidatePayload, OpVaultSummary, PolicyFile, ProfileKind } from "./types.js";
+import type { CandidateGroup, CandidatePayload, OpVaultSummary, PolicyFile, ProfileKind } from "./types.js";
 
 const store = new StateStore();
 const policyService = new PolicyService(store);
@@ -189,6 +189,7 @@ export async function createAdminApp() {
       limit: Number(req.query.limit || 50),
       query: optionalString(req.query.q),
       mode: req.query.mode === "primary" ? "primary" : "all",
+      group: candidateGroup(req.query.group),
     });
     res.json(candidates);
   });
@@ -374,6 +375,14 @@ function profileKind(value: unknown): ProfileKind {
     return kind;
   }
   return "custom";
+}
+
+function candidateGroup(value: unknown): CandidateGroup {
+  const group = typeof value === "string" ? value.trim().toLowerCase() : "all";
+  if (group === "login" || group === "api" || group === "card" || group === "note" || group === "other") {
+    return group;
+  }
+  return "all";
 }
 
 function describeMcpVault(file: PolicyFile, vaults: OpVaultSummary[]) {

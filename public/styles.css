@@ -235,11 +235,48 @@ h3 {
 }
 
 .searchGrid {
-  grid-template-columns: minmax(190px, 0.8fr) minmax(220px, 1.1fr) 86px;
+  grid-template-columns: minmax(170px, 0.8fr) minmax(150px, 0.7fr) minmax(220px, 1.1fr) 86px;
 }
 
 .approveGrid {
   grid-template-columns: minmax(260px, 1fr) 86px;
+}
+
+.secretTypeGrid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.typeCard {
+  height: auto;
+  min-height: 62px;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  border-color: var(--line);
+  background: #fbfcfe;
+  color: var(--text);
+  text-align: left;
+}
+
+.typeCard:hover,
+.typeCard.active {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent-strong);
+}
+
+.typeCard span {
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.typeCard small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .settingsGrid,
@@ -461,6 +498,7 @@ button.danger:hover {
   .dropTargets,
   .searchGrid,
   .approveGrid,
+  .secretTypeGrid,
   .settingsGrid,
   .manualGrid,
   .profileGrid {

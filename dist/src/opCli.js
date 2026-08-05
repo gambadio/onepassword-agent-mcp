@@ -118,6 +118,7 @@ export class OpCli {
         const vault = options.vault || this.settings.defaultVault;
         const limit = Math.max(1, Math.min(options.limit || 100, 500));
         const query = (options.query || "").trim().toLowerCase();
+        const group = options.group || "all";
         const args = [
             "item",
             "list",
@@ -130,14 +131,18 @@ export class OpCli {
         const result = await this.run(args, { timeoutMs: 60_000 });
         const items = JSON.parse(result.stdout || "[]");
         const matchedItems = query ? items.filter((item) => itemMatchesQuery(item, query)) : items;
-        const details = await this.mapWithConcurrency(matchedItems.slice(0, limit), 6, async (item) => await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault));
+        const groups = countGroups(matchedItems);
+        const groupedItems = group === "all" ? matchedItems : matchedItems.filter((item) => itemGroup(item) === group);
+        const details = await this.mapWithConcurrency(groupedItems.slice(0, limit), 6, async (item) => await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault));
         const candidates = details.flatMap((item) => this.itemToCandidates(item, options.key, vault, options.mode || "all")).slice(0, limit);
         return {
             items: candidates,
             total: items.length,
-            matched: matchedItems.length,
+            matched: groupedItems.length,
             shown: candidates.length,
             query,
+            activeGroup: group,
+            groups,
         };
     }
     async getItem(item, vault) {
@@ -393,6 +398,32 @@ function itemMatchesQuery(item, query) {
         .split(/\s+/)
         .filter(Boolean)
         .every((part) => haystack.includes(part));
+}
+function countGroups(items) {
+    const counts = {
+        all: items.length,
+        login: 0,
+        api: 0,
+        card: 0,
+        note: 0,
+        other: 0,
+    };
+    for (const item of items) {
+        counts[itemGroup(item)] += 1;
+    }
+    return counts;
+}
+function itemGroup(item) {
+    const category = normalizeCategory(item.category);
+    if (category === "LOGIN" || category === "PASSWORD")
+        return "login";
+    if (category === "API_CREDENTIAL")
+        return "api";
+    if (category === "CREDIT_CARD")
+        return "card";
+    if (category === "SECURE_NOTE" || category === "SSH_KEY")
+        return "note";
+    return "other";
 }
 function createCategory(category) {
     const value = (category || "login").trim().toLowerCase();

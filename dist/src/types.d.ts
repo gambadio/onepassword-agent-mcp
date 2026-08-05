@@ -1,5 +1,6 @@
 export type SecretKind = "password" | "username" | "otp" | "api_credential" | "credit_card_name" | "credit_card_number" | "credit_card_cvv" | "credit_card_pin" | "credit_card_expiry" | "secure_note" | "ssh_private_key" | "license_key" | "text" | "custom";
 export type CandidateMode = "primary" | "all";
+export type CandidateGroup = "all" | "login" | "api" | "card" | "note" | "other";
 export type CreateSecretCategory = "login" | "password" | "api_credential" | "secure_note" | "credit_card";
 export type ProfileKind = "name" | "email" | "phone" | "address" | "company" | "username" | "custom";
 export interface Settings {
@@ -103,6 +104,8 @@ export interface CandidateSearchResult {
     matched: number;
     shown: number;
     query: string;
+    activeGroup: CandidateGroup;
+    groups: Record<CandidateGroup, number>;
 }
 export interface PublicGrant {
     id: string;

@@ -44,10 +44,12 @@
 
   <rect x="18" y="418" width="600" height="354" rx="8" fill="#ffffff" stroke="#d7dee8"/>
   <text x="36" y="450" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Choose From 1Password</text>
-  <rect x="36" y="470" width="176" height="36" rx="6" fill="#fff" stroke="#d7dee8"/>
+  <rect x="36" y="470" width="150" height="36" rx="6" fill="#fff" stroke="#d7dee8"/>
   <text x="48" y="493" fill="#627084" font-family="Arial, sans-serif" font-size="13">Private</text>
-  <rect x="224" y="470" width="280" height="36" rx="6" fill="#fff" stroke="#d7dee8"/>
-  <text x="236" y="493" fill="#627084" font-family="Arial, sans-serif" font-size="13">github</text>
+  <rect x="198" y="470" width="190" height="36" rx="6" fill="#fff" stroke="#d7dee8"/>
+  <text x="210" y="493" fill="#627084" font-family="Arial, sans-serif" font-size="13">github</text>
+  <rect x="400" y="470" width="104" height="36" rx="6" fill="#e9f7f4" stroke="#94bdb8"/>
+  <text x="452" y="493" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="13" font-weight="700">API keys</text>
   <rect x="516" y="470" width="84" height="36" rx="6" fill="#147d73"/>
   <text x="558" y="493" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Search</text>
 
@@ -73,13 +75,25 @@
   <rect x="640" y="418" width="622" height="354" rx="8" fill="#ffffff" stroke="#d7dee8"/>
   <text x="658" y="450" fill="#1e2633" font-family="Arial, sans-serif" font-size="17" font-weight="700">Approve Agent Items</text>
   <rect x="658" y="470" width="412" height="36" rx="6" fill="#fff" stroke="#d7dee8"/>
-  <text x="670" y="493" fill="#627084" font-family="Arial, sans-serif" font-size="13">github.com</text>
+  <text x="670" y="493" fill="#627084" font-family="Arial, sans-serif" font-size="13">github.com, api token, card</text>
   <rect x="1084" y="470" width="84" height="36" rx="6" fill="#147d73"/>
   <text x="1126" y="493" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="13" font-weight="700">Refresh</text>
-  <g transform="translate(658 528)">
+  <g transform="translate(658 520)">
+    <rect width="90" height="34" rx="8" fill="#e9f7f4" stroke="#147d73"/>
+    <text x="45" y="22" text-anchor="middle" fill="#0f5f58" font-family="Arial, sans-serif" font-size="12" font-weight="700">All · 5</text>
+    <rect x="102" width="94" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
+    <text x="149" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Logins · 2</text>
+    <rect x="208" width="104" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
+    <text x="260" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">API Keys · 2</text>
+    <rect x="324" width="112" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
+    <text x="380" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Cards · 1</text>
+    <rect x="448" width="138" height="34" rx="8" fill="#fff" stroke="#d7dee8"/>
+    <text x="517" y="22" text-anchor="middle" fill="#344054" font-family="Arial, sans-serif" font-size="12" font-weight="700">Notes &amp; SSH · 0</text>
+  </g>
+  <g transform="translate(658 582)">
     <rect width="586" height="116" rx="8" fill="#fbfcfe" stroke="#d7dee8"/>
-    <text x="16" y="25" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">GitHub Work Login</text>
-    <text x="16" y="47" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | site: github.com | field: password</text>
+    <text x="16" y="25" fill="#1e2633" font-family="Arial, sans-serif" font-size="15" font-weight="700">GitHub API Token</text>
+    <text x="16" y="47" fill="#627084" font-family="Arial, sans-serif" font-size="12">vault: MCPVAULT | category: API Credential | field: credential</text>
     <rect x="16" y="64" width="438" height="34" rx="6" fill="#fff" stroke="#d7dee8"/>
     <text x="28" y="86" fill="#627084" font-family="Arial, sans-serif" font-size="13">github.com, *.github.com</text>
     <rect x="470" y="64" width="96" height="34" rx="6" fill="#147d73"/>

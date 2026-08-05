@@ -12,9 +12,11 @@ const manualForm = document.querySelector("#manualForm");
 const profileForm = document.querySelector("#profileForm");
 const sourceSearchInput = document.querySelector("#sourceSearchInput");
 const sourceVaultSelect = document.querySelector("#sourceVaultSelect");
+const sourceGroupSelect = document.querySelector("#sourceGroupSelect");
 const sourceLimitInput = document.querySelector("#sourceLimitInput");
 const mcpSearchInput = document.querySelector("#mcpSearchInput");
 const mcpLimitInput = document.querySelector("#mcpLimitInput");
+const secretGroupButtons = document.querySelectorAll("[data-secret-group]");
 const mcpVaultNameLabel = document.querySelector("#mcpVaultNameLabel");
 const mcpVaultStatus = document.querySelector("#mcpVaultStatus");
 const createVaultBtn = document.querySelector("#createVaultBtn");
@@ -26,6 +28,7 @@ let mcpSearchTimer;
 let currentStatus;
 let sourceCandidateMap = new Map();
 let selectedCandidateId = "";
+let activeSecretGroup = "all";
 
 document.querySelector("#refreshBtn").addEventListener("click", () => runAction(refresh));
 document.querySelector("#loadSourceBtn").addEventListener("click", () => runAction(loadSourceCandidates));
@@ -50,10 +53,18 @@ sourceSearchInput.addEventListener("input", () => {
   sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 350);
 });
 sourceVaultSelect.addEventListener("change", () => runAction(loadSourceCandidates));
+sourceGroupSelect.addEventListener("change", () => runAction(loadSourceCandidates));
 mcpSearchInput.addEventListener("input", () => {
   window.clearTimeout(mcpSearchTimer);
   mcpSearchTimer = window.setTimeout(() => runAction(loadMcpCandidates, { quiet: true }), 350);
 });
+for (const button of secretGroupButtons) {
+  button.addEventListener("click", () => {
+    activeSecretGroup = button.dataset.secretGroup || "all";
+    renderSecretGroupButtons();
+    runAction(loadMcpCandidates, { quiet: true });
+  });
+}
 settingsForm.addEventListener("submit", saveSettings);
 manualForm.addEventListener("submit", addManualGrant);
 profileForm.addEventListener("submit", addProfileEntry);
@@ -213,6 +224,7 @@ async function loadSourceCandidates() {
     vault,
     limit: sourceLimitInput.value || "100",
     mode: "primary",
+    group: sourceGroupSelect.value || "all",
   });
   const query = sourceSearchInput.value.trim();
   if (query) params.set("q", query);
@@ -226,9 +238,9 @@ function renderSourceCandidates(result) {
   sourceCandidateMap = new Map();
   selectedCandidateId = "";
   sourceCandidatesEl.innerHTML = "";
-  sourceSummary.textContent = `${result.shown} shown of ${result.matched} matches (${result.total} total in this vault).`;
+  sourceSummary.textContent = `${result.shown} shown of ${result.matched} ${groupLabel(result.activeGroup)} matches (${result.total} total in this vault).`;
   if (!candidates.length) {
-    sourceCandidatesEl.append(empty("No matching items with usable fields found in this source vault."));
+    sourceCandidatesEl.append(empty(`No matching ${groupLabel(result.activeGroup)} items with usable fields found in this source vault.`));
     return;
   }
   const template = document.querySelector("#sourceCandidateTemplate");
@@ -362,6 +374,7 @@ async function loadMcpCandidates() {
     vault: mcpVault.name || name,
     limit: mcpLimitInput.value || "100",
     mode: "all",
+    group: activeSecretGroup,
   });
   const query = mcpSearchInput.value.trim();
   if (query) params.set("q", query);
@@ -373,9 +386,10 @@ async function loadMcpCandidates() {
 function renderMcpCandidates(result) {
   const candidates = result.items || [];
   mcpCandidatesEl.innerHTML = "";
-  mcpSummary.textContent = `${result.shown} shown of ${result.matched} matches (${result.total} total in agent vault).`;
+  renderSecretGroupCounts(result.groups || {});
+  mcpSummary.textContent = `${result.shown} shown of ${result.matched} ${groupLabel(result.activeGroup)} matches (${result.total} total in agent vault).`;
   if (!candidates.length) {
-    mcpCandidatesEl.append(empty("No matching approvable fields found in the agent vault."));
+    mcpCandidatesEl.append(empty(`No matching ${groupLabel(result.activeGroup)} fields found in the agent vault.`));
     return;
   }
   const template = document.querySelector("#mcpCandidateTemplate");
@@ -418,6 +432,20 @@ function renderMcpCandidates(result) {
     }));
     mcpCandidatesEl.append(node);
   }
+}
+
+function renderSecretGroupButtons() {
+  for (const button of secretGroupButtons) {
+    button.classList.toggle("active", button.dataset.secretGroup === activeSecretGroup);
+  }
+}
+
+function renderSecretGroupCounts(groups) {
+  for (const el of document.querySelectorAll("[data-group-count]")) {
+    const key = el.dataset.groupCount || "all";
+    el.textContent = String(groups[key] || 0);
+  }
+  renderSecretGroupButtons();
 }
 
 function renderProfile(entries) {
@@ -593,6 +621,15 @@ function formatKind(value) {
 
 function formatCategory(value) {
   return String(value || "").replaceAll("_", " ").toLowerCase();
+}
+
+function groupLabel(group) {
+  if (group === "login") return "login/password";
+  if (group === "api") return "API key";
+  if (group === "card") return "credit-card";
+  if (group === "note") return "note/SSH";
+  if (group === "other") return "other";
+  return "all";
 }
 
 function empty(text) {

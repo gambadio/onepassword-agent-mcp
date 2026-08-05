@@ -106,8 +106,9 @@ This creates an empty 1Password vault. It does not copy or approve anything yet.
 Use **Choose From 1Password**:
 
 1. Select a source vault.
-2. Search by item title, website, category, or account label.
-3. Drag an item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+2. Select a type filter when you want only logins, API keys, credit cards, notes, or other items.
+3. Search by item title, website, category, or account label.
+4. Drag an item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
 
 Copy is safest because the original item stays where it is. Move removes the item from the source vault and creates a new item in `MCPVAULT`.
 
@@ -117,9 +118,10 @@ Copy is safest because the original item stays where it is. Move removes the ite
 
 Use **Approve Agent Items**:
 
-1. Find the copied or moved item field in `MCPVAULT`.
-2. Enter allowed sites, such as `github.com, *.github.com`.
-3. Click **Approve**.
+1. Use the type boxes to switch between logins, API keys, credit cards, notes, and other fields.
+2. Find the copied or moved item field in `MCPVAULT`.
+3. Enter allowed sites, such as `github.com, *.github.com`.
+4. Click **Approve**.
 
 Leave allowed sites blank when an entry may be used on all URLs.
 

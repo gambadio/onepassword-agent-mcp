@@ -51,8 +51,9 @@ That creates an empty 1Password vault. It does not copy, move, or approve anythi
 Use **Choose From 1Password**:
 
 1. Pick your source vault, such as `Private`.
-2. Search by item name, website, category, or account label.
-3. Drag the item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
+2. Pick a type filter, such as **API keys** or **Credit cards**, when you do not want a mixed list.
+3. Search by item name, website, category, or account label.
+4. Drag the item to **Copy Into MCPVAULT** or **Move Into MCPVAULT**.
 
 ![Drag to copy](screenshots/drag-to-copy.svg)
 
@@ -63,6 +64,14 @@ Use **Move** only when you want the item removed from the source vault. 1Passwor
 ## Step 3: Approve Agent Fields
 
 After an item is inside `MCPVAULT`, its approvable fields appear under **Approve Agent Items**.
+
+Use the boxes at the top of that panel to manage each type independently:
+
+- **Logins** for login/password items.
+- **API Keys** for API Credential items.
+- **Credit Cards** for cardholder, number, CVV, PIN, and expiry fields.
+- **Notes & SSH** for secure notes and SSH keys.
+- **Other** for remaining supported concealed/custom fields.
 
 1. Search the agent vault.
 2. Enter allowed sites, such as:

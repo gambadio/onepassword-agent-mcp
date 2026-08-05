@@ -16,6 +16,8 @@ export type SecretKind =
 
 export type CandidateMode = "primary" | "all";
 
+export type CandidateGroup = "all" | "login" | "api" | "card" | "note" | "other";
+
 export type CreateSecretCategory =
   | "login"
   | "password"
@@ -157,6 +159,8 @@ export interface CandidateSearchResult {
   matched: number;
   shown: number;
   query: string;
+  activeGroup: CandidateGroup;
+  groups: Record<CandidateGroup, number>;
 }
 
 export interface PublicGrant {

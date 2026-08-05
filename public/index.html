@@ -87,6 +87,17 @@
             <select id="sourceVaultSelect"></select>
           </label>
           <label>
+            Type
+            <select id="sourceGroupSelect">
+              <option value="all">All items</option>
+              <option value="login">Logins & passwords</option>
+              <option value="api">API keys</option>
+              <option value="card">Credit cards</option>
+              <option value="note">Notes & SSH keys</option>
+              <option value="other">Other items</option>
+            </select>
+          </label>
+          <label>
             Search
             <input id="sourceSearchInput" autocomplete="off" placeholder="github, google.com, work email" />
           </label>
@@ -107,10 +118,36 @@
           </div>
           <button id="loadMcpBtn" type="button">Refresh</button>
         </div>
+        <div class="secretTypeGrid" aria-label="Secret type filter">
+          <button class="typeCard active" type="button" data-secret-group="all">
+            <span>All Fields</span>
+            <small data-group-count="all">0</small>
+          </button>
+          <button class="typeCard" type="button" data-secret-group="login">
+            <span>Logins</span>
+            <small data-group-count="login">0</small>
+          </button>
+          <button class="typeCard" type="button" data-secret-group="api">
+            <span>API Keys</span>
+            <small data-group-count="api">0</small>
+          </button>
+          <button class="typeCard" type="button" data-secret-group="card">
+            <span>Credit Cards</span>
+            <small data-group-count="card">0</small>
+          </button>
+          <button class="typeCard" type="button" data-secret-group="note">
+            <span>Notes & SSH</span>
+            <small data-group-count="note">0</small>
+          </button>
+          <button class="typeCard" type="button" data-secret-group="other">
+            <span>Other</span>
+            <small data-group-count="other">0</small>
+          </button>
+        </div>
         <div class="approveGrid">
           <label>
             Search agent vault
-            <input id="mcpSearchInput" autocomplete="off" placeholder="github.com, login name, account" />
+            <input id="mcpSearchInput" autocomplete="off" placeholder="github.com, API key, credit card, account" />
           </label>
           <label>
             Limit

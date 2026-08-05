@@ -170,6 +170,7 @@ export async function createAdminApp() {
             limit: Number(req.query.limit || 50),
             query: optionalString(req.query.q),
             mode: req.query.mode === "primary" ? "primary" : "all",
+            group: candidateGroup(req.query.group),
         });
         res.json(candidates);
     });
@@ -334,6 +335,13 @@ function profileKind(value) {
         return kind;
     }
     return "custom";
+}
+function candidateGroup(value) {
+    const group = typeof value === "string" ? value.trim().toLowerCase() : "all";
+    if (group === "login" || group === "api" || group === "card" || group === "note" || group === "other") {
+        return group;
+    }
+    return "all";
 }
 function describeMcpVault(file, vaults) {
     const vault = findVault(vaults, file.settings.mcpVaultName);

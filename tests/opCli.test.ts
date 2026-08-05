@@ -120,6 +120,52 @@ test("listCandidates exposes approvable fields for API credentials and credit ca
     );
     assert.equal(result.items[0].fieldLabel, "credential");
     assert.equal(result.items[3].fieldLabel, "number");
+    assert.equal(result.groups.api, 1);
+    assert.equal(result.groups.card, 1);
+  } finally {
+    if (previousLog === undefined) delete process.env.OPMCP_TEST_LOG;
+    else process.env.OPMCP_TEST_LOG = previousLog;
+    await fs.rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("listCandidates filters API credential and credit card groups before loading details", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "opmcp-opcli-test-"));
+  const fakeOp = path.join(dir, "op-fake.js");
+  const logFile = path.join(dir, "calls.jsonl");
+  const previousLog = process.env.OPMCP_TEST_LOG;
+  await fs.writeFile(fakeOp, fakeOpScript(), { mode: 0o755 });
+  process.env.OPMCP_TEST_LOG = logFile;
+
+  try {
+    const op = new OpCli({
+      ...testSettings,
+      opPath: fakeOp,
+    });
+    const api = await op.listCandidates({
+      vault: "MCPVAULT",
+      limit: 10,
+      key: Buffer.alloc(32, 8),
+      mode: "all",
+      group: "api",
+    });
+    assert.equal(api.activeGroup, "api");
+    assert.deepEqual(api.items.map((item) => item.kind), ["api_credential", "username"]);
+
+    const card = await op.listCandidates({
+      vault: "MCPVAULT",
+      limit: 10,
+      key: Buffer.alloc(32, 9),
+      mode: "all",
+      group: "card",
+    });
+    assert.equal(card.activeGroup, "card");
+    assert.deepEqual(card.items.map((item) => item.kind), [
+      "credit_card_name",
+      "credit_card_number",
+      "credit_card_cvv",
+      "credit_card_expiry",
+    ]);
   } finally {
     if (previousLog === undefined) delete process.env.OPMCP_TEST_LOG;
     else process.env.OPMCP_TEST_LOG = previousLog;

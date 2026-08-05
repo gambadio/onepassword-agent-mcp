@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import type {
   Candidate,
+  CandidateGroup,
   CandidateMode,
   CandidatePayload,
   CandidateSearchResult,
@@ -160,10 +161,12 @@ export class OpCli {
     query?: string;
     key: Buffer;
     mode?: CandidateMode;
+    group?: CandidateGroup;
   }): Promise<CandidateSearchResult> {
     const vault = options.vault || this.settings.defaultVault;
     const limit = Math.max(1, Math.min(options.limit || 100, 500));
     const query = (options.query || "").trim().toLowerCase();
+    const group = options.group || "all";
     const args = [
       "item",
       "list",
@@ -176,8 +179,10 @@ export class OpCli {
     const result = await this.run(args, { timeoutMs: 60_000 });
     const items = JSON.parse(result.stdout || "[]") as OpItemSummary[];
     const matchedItems = query ? items.filter((item) => itemMatchesQuery(item, query)) : items;
+    const groups = countGroups(matchedItems);
+    const groupedItems = group === "all" ? matchedItems : matchedItems.filter((item) => itemGroup(item) === group);
     const details = await this.mapWithConcurrency(
-      matchedItems.slice(0, limit),
+      groupedItems.slice(0, limit),
       6,
       async (item) => await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault),
     );
@@ -191,9 +196,11 @@ export class OpCli {
     return {
       items: candidates,
       total: items.length,
-      matched: matchedItems.length,
+      matched: groupedItems.length,
       shown: candidates.length,
       query,
+      activeGroup: group,
+      groups,
     };
   }
 
@@ -472,6 +479,30 @@ function itemMatchesQuery(item: OpItemSummary, query: string): boolean {
     .split(/\s+/)
     .filter(Boolean)
     .every((part) => haystack.includes(part));
+}
+
+function countGroups(items: OpItemSummary[]): Record<CandidateGroup, number> {
+  const counts: Record<CandidateGroup, number> = {
+    all: items.length,
+    login: 0,
+    api: 0,
+    card: 0,
+    note: 0,
+    other: 0,
+  };
+  for (const item of items) {
+    counts[itemGroup(item)] += 1;
+  }
+  return counts;
+}
+
+function itemGroup(item: OpItemSummary): CandidateGroup {
+  const category = normalizeCategory(item.category);
+  if (category === "LOGIN" || category === "PASSWORD") return "login";
+  if (category === "API_CREDENTIAL") return "api";
+  if (category === "CREDIT_CARD") return "card";
+  if (category === "SECURE_NOTE" || category === "SSH_KEY") return "note";
+  return "other";
 }
 
 function createCategory(category: string | undefined): string {
