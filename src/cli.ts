@@ -287,7 +287,7 @@ function printRuntimeInfo(): void {
   console.log("Stop:");
   console.log("  Admin console: press Ctrl-C in the terminal running onepassword-agent-mcp admin.");
   console.log("  MCP server: close the MCP client session that launched it.");
-  console.log("  Menu bar: choose Remove Menu Bar Shortcut, or run onepassword-agent-mcp menubar uninstall --apply.");
+  console.log("  Menu bar: choose Remove From Menu Bar, or run onepassword-agent-mcp menubar remove.");
   console.log("");
   console.log("Uninstall:");
   console.log("  onepassword-agent-mcp uninstall all");
@@ -371,13 +371,13 @@ async function manageMenuBar(args: ParsedArgs): Promise<void> {
     });
     ok(`Menu-bar shortcut installed: ${status.appPath}`);
     console.log(`Launch at login: ${status.launchAtLogin ? "on" : "off"}`);
-    console.log("Remove it with: onepassword-agent-mcp menubar uninstall --apply");
+    console.log("Uninstall it with: onepassword-agent-mcp menubar uninstall --apply");
     return;
   }
 
-  if (action === "uninstall" || action === "remove" || action === "disable") {
+  if (action === "uninstall" || action === "disable") {
     const status = await getMenuBarStatus(file.settings);
-    console.log("1Password Agent MCP menu-bar removal\n");
+    console.log("1Password Agent MCP menu-bar uninstall\n");
     console.log(`Shortcut: ${status.appPath}`);
     console.log(`Login item: ${status.launchAgentPath}`);
     console.log("MCP client configuration, local approvals, MCPVAULT, and 1Password items are not removed.\n");
@@ -387,7 +387,7 @@ async function manageMenuBar(args: ParsedArgs): Promise<void> {
       return;
     }
     await uninstallMenuBar(file.settings);
-    ok("Menu-bar shortcut and its login item removed.");
+    ok("Menu-bar shortcut and its login item uninstalled.");
     return;
   }
 
@@ -397,9 +397,9 @@ async function manageMenuBar(args: ParsedArgs): Promise<void> {
     return;
   }
 
-  if (action === "quit" || action === "stop") {
+  if (action === "remove" || action === "quit" || action === "stop") {
     quitMenuBar();
-    ok("Menu-bar shortcut quit. It remains installed.");
+    ok("Menu-bar shortcut removed from the menu bar. It remains installed.");
     return;
   }
 
@@ -619,7 +619,7 @@ Usage:
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
   onepassword-agent-mcp setup [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic] [--apply]
-  onepassword-agent-mcp menubar [status|install|launch|login|uninstall]
+  onepassword-agent-mcp menubar [status|install|launch|remove|login|uninstall]
   onepassword-agent-mcp uninstall [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic|menubar|state] [--apply]
 
 Commands:
@@ -649,6 +649,7 @@ Menu-bar examples (macOS only):
   onepassword-agent-mcp menubar status
   onepassword-agent-mcp menubar install
   onepassword-agent-mcp menubar install --launch-at-login
+  onepassword-agent-mcp menubar remove
   onepassword-agent-mcp menubar login off
   onepassword-agent-mcp menubar uninstall
   onepassword-agent-mcp menubar uninstall --apply

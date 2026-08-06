@@ -917,7 +917,7 @@ async function toggleMenuBar() {
   }
 
   const confirmed = window.confirm(
-    "Remove the menu-bar shortcut?\n\nThis removes only the shortcut and its login item. MCPVAULT, approvals, and 1Password items stay untouched. You can add it again with onepassword-agent-mcp menubar install.",
+    "Uninstall the menu-bar shortcut?\n\nThis removes the installed helper and its login item. MCPVAULT, approvals, and 1Password items stay untouched. You can install it again with onepassword-agent-mcp menubar install.",
   );
   if (!confirmed) {
     menuBarToggle.checked = true;
@@ -926,7 +926,7 @@ async function toggleMenuBar() {
 
   const status = await api("/api/menubar", { method: "DELETE" });
   renderMenuBar(status);
-  setMessage("Menu-bar shortcut removed. Add it again later with onepassword-agent-mcp menubar install. Your MCP and 1Password data stay unchanged.");
+  setMessage("Menu-bar shortcut uninstalled. Install it again later with onepassword-agent-mcp menubar install. Your MCP and 1Password data stay unchanged.");
 }
 
 async function toggleMenuBarLogin() {

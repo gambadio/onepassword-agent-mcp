@@ -83,9 +83,13 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         launchAtLoginMenuItem.target = self
         menu.addItem(launchAtLoginMenuItem)
 
-        let removeItem = NSMenuItem(title: "Remove Menu Bar Shortcut...", action: #selector(removeShortcut), keyEquivalent: "")
+        let removeItem = NSMenuItem(title: "Remove From Menu Bar", action: #selector(removeFromMenuBar), keyEquivalent: "")
         removeItem.target = self
         menu.addItem(removeItem)
+
+        let uninstallItem = NSMenuItem(title: "Uninstall Menu Bar Shortcut...", action: #selector(uninstallShortcut), keyEquivalent: "")
+        uninstallItem.target = self
+        menu.addItem(uninstallItem)
         statusItem.menu = menu
         updateLaunchAtLoginState()
     }
@@ -130,14 +134,25 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         updateLaunchAtLoginState()
     }
 
-    @objc private func removeShortcut() {
+    @objc private func removeFromMenuBar() {
+        NSApp.terminate(nil)
+    }
+
+    @objc private func uninstallShortcut() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.confirmUninstallShortcut()
+        }
+    }
+
+    private func confirmUninstallShortcut() {
         let alert = NSAlert()
-        alert.messageText = "Remove the menu-bar shortcut?"
-        alert.informativeText = "This removes only the visible shortcut and its login item. Your MCP setup, approvals, MCPVAULT, and 1Password items stay untouched. To add it again later, run onepassword-agent-mcp menubar install in Terminal or enable it in the admin page."
-        alert.addButton(withTitle: "Remove Shortcut")
+        alert.messageText = "Uninstall the menu-bar shortcut?"
+        alert.informativeText = "This removes the installed menu helper and its login item. Your MCP setup, approvals, MCPVAULT, and 1Password items stay untouched. To install it again later, run onepassword-agent-mcp menubar install in Terminal or enable it in the admin page."
         alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: "Uninstall Shortcut")
         alert.alertStyle = .warning
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        NSApp.activate(ignoringOtherApps: true)
+        guard alert.runModal() == .alertSecondButtonReturn else { return }
         _ = runCli(["menubar", "uninstall", "--apply"], wait: false)
         NSApp.terminate(nil)
     }

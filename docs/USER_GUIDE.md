@@ -196,7 +196,7 @@ No. Installing 1Password Agent MCP adds local commands and lets MCP clients laun
 - The optional Mac menu-bar app is installed only when you choose it and is visible while running. It starts the admin console only when you ask.
 - Restarting the computer does not auto-start this project unless you separately enabled **Launch Menu Bar at Login** or an MCP client starts it.
 
-If the **1P** menu item is closed, run `onepassword-agent-mcp menubar launch`. If you removed it, run `onepassword-agent-mcp menubar install`. The menu's **Stop Admin Console** action and `onepassword-agent-mcp admin stop` can stop the console even when it was originally started somewhere else.
+If you choose **Remove From Menu Bar**, the helper stays installed; run `onepassword-agent-mcp menubar launch` to show it again. If you choose **Uninstall Menu Bar Shortcut**, run `onepassword-agent-mcp menubar install` to reinstall it. The menu's **Stop Admin Console** action and `onepassword-agent-mcp admin stop` can stop the console even when it was originally started somewhere else.
 
 Run this any time:
 
@@ -206,7 +206,7 @@ onepassword-agent-mcp runtime
 
 ## Optional Mac Menu Bar
 
-Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the clearly labeled **1P** menu item. **Open Admin Console** starts the console when needed and opens it. The same menu can stop the console, change launch at login, or remove the shortcut without changing MCP configuration or 1Password data.
+Use **Mac Menu Bar Shortcut** in the admin page to install or uninstall the clearly labeled **1P** menu item. **Open Admin Console** starts the console when needed and opens it. **Remove From Menu Bar** only closes the helper, while **Uninstall Menu Bar Shortcut** removes the installed helper after confirmation. Neither action changes MCP configuration or 1Password data.
 
 The app is compiled locally from readable Swift source. It lives in your user `Applications` folder, requires no administrator password, and can be removed without deleting approvals or anything in 1Password.
 
