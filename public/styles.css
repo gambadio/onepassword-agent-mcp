@@ -196,6 +196,21 @@ h3 {
   margin-bottom: 12px;
 }
 
+.companionControls {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(260px, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.companionControls .actions {
+  min-width: 150px;
+}
+
+.companionNote {
+  margin-top: 12px;
+}
+
 .searchGrid {
   grid-template-columns: minmax(170px, 0.8fr) minmax(150px, 0.7fr) minmax(220px, 1.1fr) 86px;
 }
@@ -780,7 +795,8 @@ button.secondaryDanger:hover {
   .approvalExplainer,
   .settingsGrid,
   .manualGrid,
-  .profileGrid {
+  .profileGrid,
+  .companionControls {
     grid-template-columns: 1fr;
   }
 

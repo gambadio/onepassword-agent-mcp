@@ -3,6 +3,14 @@ import express, { type NextFunction, type Request, type Response } from "express
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadOrCreateKey, openJson } from "./cryptoBox.js";
+import {
+  getMenuBarStatus,
+  installMenuBar,
+  launchMenuBar,
+  quitMenuBar,
+  setMenuBarLaunchAtLogin,
+  uninstallMenuBar,
+} from "./menuBar.js";
 import { OpCli } from "./opCli.js";
 import { publicDir } from "./paths.js";
 import { PolicyService } from "./policy.js";
@@ -89,6 +97,41 @@ export async function createAdminApp() {
       file.audit = file.audit.slice(0, 200);
     });
     res.json(updated.settings);
+  });
+
+  app.get("/api/menubar", async (_req, res) => {
+    const file = await store.load();
+    res.json(await getMenuBarStatus(file.settings));
+  });
+
+  app.post("/api/menubar/install", async (req, res) => {
+    const file = await store.load();
+    const status = await installMenuBar(file.settings, {
+      launch: req.body.launch !== false,
+      launchAtLogin: typeof req.body.launchAtLogin === "boolean" ? req.body.launchAtLogin : undefined,
+    });
+    res.status(201).json(status);
+  });
+
+  app.post("/api/menubar/login", async (req, res) => {
+    const enabled = req.body.enabled;
+    if (typeof enabled !== "boolean") throw new Error("enabled must be true or false.");
+    await setMenuBarLaunchAtLogin(enabled);
+    const file = await store.load();
+    res.json(await getMenuBarStatus(file.settings));
+  });
+
+  app.post("/api/menubar/launch", async (_req, res) => {
+    launchMenuBar();
+    const file = await store.load();
+    res.json(await getMenuBarStatus(file.settings));
+  });
+
+  app.delete("/api/menubar", async (_req, res) => {
+    const file = await store.load();
+    const status = await uninstallMenuBar(file.settings, { quit: false });
+    res.json(status);
+    setTimeout(() => quitMenuBar(), 150);
   });
 
   app.get("/api/grants", async (_req, res) => {

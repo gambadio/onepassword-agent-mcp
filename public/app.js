@@ -27,6 +27,12 @@ const transferDialogText = document.querySelector("#transferDialogText");
 const transferCopyBtn = document.querySelector("#transferCopyBtn");
 const transferMoveBtn = document.querySelector("#transferMoveBtn");
 const transferCancelBtn = document.querySelector("#transferCancelBtn");
+const menuBarStatus = document.querySelector("#menuBarStatus");
+const menuBarDescription = document.querySelector("#menuBarDescription");
+const menuBarToggle = document.querySelector("#menuBarToggle");
+const menuBarLoginToggle = document.querySelector("#menuBarLoginToggle");
+const menuBarLaunchBtn = document.querySelector("#menuBarLaunchBtn");
+const menuBarUpdateBtn = document.querySelector("#menuBarUpdateBtn");
 
 let sourceSearchTimer;
 let mcpSearchTimer;
@@ -84,6 +90,10 @@ for (const button of secretGroupButtons) {
 settingsForm.addEventListener("submit", saveSettings);
 manualForm.addEventListener("submit", addManualGrant);
 profileForm.addEventListener("submit", addProfileEntry);
+menuBarToggle.addEventListener("change", () => runAction(toggleMenuBar));
+menuBarLoginToggle.addEventListener("change", () => runAction(toggleMenuBarLogin));
+menuBarLaunchBtn.addEventListener("click", () => runAction(launchMenuBarShortcut));
+menuBarUpdateBtn.addEventListener("click", () => runAction(updateMenuBarShortcut));
 
 await runAction(async () => {
   await refresh();
@@ -91,7 +101,12 @@ await runAction(async () => {
 }, { quiet: true });
 
 async function refresh() {
-  const [status, grants, profile] = await Promise.all([api("/api/status"), api("/api/grants"), api("/api/profile")]);
+  const [status, grants, profile, menuBar] = await Promise.all([
+    api("/api/status"),
+    api("/api/grants"),
+    api("/api/profile"),
+    api("/api/menubar"),
+  ]);
   currentStatus = status;
   currentGrants = grants || [];
   renderStatus(status);
@@ -99,6 +114,7 @@ async function refresh() {
   renderVaultOptions(status.cli?.vaults || [], status.settings.mcpVaultName);
   renderGrants(grants);
   renderProfile(profile);
+  renderMenuBar(menuBar);
   renderAudit(status.audit);
 }
 
@@ -137,6 +153,31 @@ function renderSettings(settings) {
   settingsForm.clipboardClearSeconds.value = settings.clipboardClearSeconds || 20;
   settingsForm.allowPasteWithoutSite.checked = Boolean(settings.allowPasteWithoutSite);
   settingsForm.allowAgentItemCreate.checked = Boolean(settings.allowAgentItemCreate);
+}
+
+function renderMenuBar(status) {
+  menuBarToggle.checked = Boolean(status.installed);
+  menuBarLoginToggle.checked = Boolean(status.launchAtLogin);
+  menuBarToggle.disabled = !status.supported || (!status.compilerAvailable && !status.installed);
+  menuBarLoginToggle.disabled = !status.installed;
+  menuBarLaunchBtn.hidden = !status.installed || status.running;
+  menuBarUpdateBtn.hidden = !status.needsUpdate;
+
+  if (!status.supported) {
+    menuBarStatus.textContent = "macOS only";
+    menuBarDescription.textContent = status.reason || "This optional shortcut is available on macOS only.";
+    return;
+  }
+  if (!status.installed) {
+    menuBarStatus.textContent = "Not installed";
+    menuBarDescription.textContent = status.reason
+      || "Optional. Enable it to build a small transparent local app and place it in your user Applications folder.";
+    return;
+  }
+
+  menuBarStatus.textContent = status.running ? "Visible now" : "Installed";
+  const loginText = status.launchAtLogin ? " It will reappear after your next Mac login." : " It will not start at login.";
+  menuBarDescription.textContent = `The shortcut is ${status.running ? "visible in the menu bar" : "installed but currently closed"}.${loginText}`;
 }
 
 function renderVaultOptions(vaults, mcpVaultName) {
@@ -862,6 +903,57 @@ function renderAudit(events) {
     div.textContent = `${new Date(event.createdAt).toLocaleString()} - ${event.message}`;
     auditEl.append(div);
   }
+}
+
+async function toggleMenuBar() {
+  if (menuBarToggle.checked) {
+    const status = await api("/api/menubar/install", {
+      method: "POST",
+      body: JSON.stringify({ launch: true, launchAtLogin: menuBarLoginToggle.checked }),
+    });
+    renderMenuBar(status);
+    setMessage("Menu-bar shortcut installed and opened. Look for the shield-and-lock symbol at the top of your Mac screen.");
+    return;
+  }
+
+  const confirmed = window.confirm(
+    "Remove the menu-bar shortcut?\n\nThis removes only the shortcut and its login item. MCPVAULT, approvals, and 1Password items stay untouched.",
+  );
+  if (!confirmed) {
+    menuBarToggle.checked = true;
+    return;
+  }
+
+  const status = await api("/api/menubar", { method: "DELETE" });
+  renderMenuBar(status);
+  setMessage("Menu-bar shortcut removed. If it started this console, this page will close; your MCP and 1Password data stay unchanged.");
+}
+
+async function toggleMenuBarLogin() {
+  const status = await api("/api/menubar/login", {
+    method: "POST",
+    body: JSON.stringify({ enabled: menuBarLoginToggle.checked }),
+  });
+  renderMenuBar(status);
+  setMessage(menuBarLoginToggle.checked
+    ? "The visible shortcut will open after your next Mac login."
+    : "Launch at login is off. The currently visible shortcut keeps running until you quit it.");
+}
+
+async function launchMenuBarShortcut() {
+  const status = await api("/api/menubar/launch", { method: "POST", body: "{}" });
+  renderMenuBar(status);
+  setMessage("Opening the menu-bar shortcut.");
+  window.setTimeout(() => runAction(refresh, { quiet: true }), 600);
+}
+
+async function updateMenuBarShortcut() {
+  const status = await api("/api/menubar/install", {
+    method: "POST",
+    body: JSON.stringify({ launch: true, launchAtLogin: menuBarLoginToggle.checked }),
+  });
+  renderMenuBar(status);
+  setMessage("Menu-bar shortcut updated to this package version.");
 }
 
 async function saveSettings(event) {

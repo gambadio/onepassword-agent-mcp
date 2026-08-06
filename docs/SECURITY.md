@@ -18,11 +18,12 @@ For the strictest 1Password-side boundary, use a 1Password service account scope
 
 ## Process Model
 
-The package does not install a launch agent, daemon, service, startup item, browser extension, or hidden resident process.
+The npm installation does not install a launch agent, daemon, service, startup item, browser extension, or hidden resident process.
 
 - The admin console runs only while `onepassword-agent-mcp admin` is running.
 - The MCP server runs as a stdio child process when an MCP client launches `onepassword-agent-mcp mcp`.
 - Client setup writes MCP client configuration only.
+- The optional macOS menu-bar companion is built and installed only after explicit approval. It is visible while running, does not start the admin server until asked, and its separate launch-at-login setting defaults to off.
 - Persistent local app state is limited to `~/.onepassword-mcp` unless `ONEPASSWORD_MCP_HOME` is set.
 
 ## What Is Protected

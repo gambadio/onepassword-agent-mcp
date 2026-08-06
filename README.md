@@ -6,6 +6,8 @@
 
 Local MCP access to approved 1Password items and profile data for AI agents.
 
+[npm package](https://www.npmjs.com/package/onepassword-agent-mcp) · [setup guide](docs/SETUP.md) · [security model](docs/SECURITY.md) · [uninstall guide](docs/UNINSTALL.md)
+
 Agents receive encrypted local handles, not plaintext 1Password secrets. At the moment of copy or paste, the MCP resolves the selected field locally through the 1Password CLI and sends it to the OS clipboard or active app.
 
 The repo contains no personal 1Password data. Every install connects to that user's own 1Password CLI and local approval policy.
@@ -32,13 +34,19 @@ Install from npm:
 npm install -g onepassword-agent-mcp
 ```
 
+Run the friendly installer. It detects supported MCP clients and, on macOS, asks whether you want the optional visible menu-bar shortcut:
+
+```bash
+onepassword-agent-mcp install
+```
+
 Or install from GitHub:
 
 ```bash
 npm install -g github:gambadio/onepassword-agent-mcp
 ```
 
-Check your setup:
+Prefer explicit commands? Check your setup and connect clients manually:
 
 ```bash
 onepassword-agent-mcp doctor
@@ -68,12 +76,14 @@ Uninstall guide: [docs/UNINSTALL.md](docs/UNINSTALL.md)
 
 ## Does It Always Run?
 
-No. This package does not install a launch agent, daemon, background service, startup item, browser extension, or hidden resident process.
+No. Installing the npm package itself adds commands only. It does not install a launch agent, daemon, background service, startup item, browser extension, or hidden resident process.
 
 - `onepassword-agent-mcp admin` runs the local approval console only while that terminal process is alive.
 - `onepassword-agent-mcp mcp` is a stdio MCP server. MCP clients such as Claude Code, Codex, or VS Code launch it as a child process when they need it.
 - `onepassword-agent-mcp setup ... --apply` only writes MCP client configuration.
-- Restarting the computer does not auto-start this project unless a separate tool or user-created startup script launches an MCP client that then launches the MCP server.
+- The optional macOS menu-bar companion is installed only when you explicitly choose it. Its icon is visible whenever it is running.
+- Launch at login is a separate choice and is off by default. Even when enabled, the visible menu-bar app does not start the admin server until you choose **Open Admin Console**.
+- Restarting the computer does not auto-start this project unless you enabled the optional menu-bar login item or another app starts an MCP client that then launches the stdio server.
 - Persistent local state is limited to approvals and the local encryption key in `~/.onepassword-mcp`.
 
 You can see this explanation any time:
@@ -81,6 +91,25 @@ You can see this explanation any time:
 ```bash
 onepassword-agent-mcp runtime
 ```
+
+## Optional Mac Menu Bar
+
+On macOS, the guided installer can add a small shield-and-lock symbol to the menu bar. You can also enable it later under **Mac Menu Bar Shortcut** in the local admin page.
+
+The companion is built locally from the readable Swift source in [`native/MenuBarApp.swift`](native/MenuBarApp.swift). No opaque app binary is shipped in the npm package. The app is placed at `~/Applications/1Password Agent MCP.app` and never asks for administrator access.
+
+Manual controls:
+
+```bash
+onepassword-agent-mcp menubar status
+onepassword-agent-mcp menubar install
+onepassword-agent-mcp menubar install --launch-at-login
+onepassword-agent-mcp menubar login off
+onepassword-agent-mcp menubar quit
+onepassword-agent-mcp menubar uninstall --apply
+```
+
+The menu contains **Open Admin Console**, **Start/Stop Admin Console**, **Launch Menu Bar at Login**, **Remove Menu Bar Shortcut**, and **Quit Menu Bar**. Removing it leaves MCP client configuration, local approvals, `MCPVAULT`, and all 1Password items untouched.
 
 ## Requirements
 
@@ -223,7 +252,7 @@ onepassword-agent-mcp uninstall all
 onepassword-agent-mcp uninstall all --apply
 ```
 
-The uninstall command removes Claude Code and Codex config entries where their CLIs are installed. VS Code currently exposes an add command but no stable remove flag in its CLI, so the command prints the manual VS Code cleanup step for Copilot.
+The uninstall command removes Claude Code and Codex config entries where their CLIs are installed and removes the optional menu-bar app/login item if present. VS Code currently exposes an add command but no stable remove flag in its CLI, so the command prints the manual VS Code cleanup step for Copilot.
 
 Remove the global npm package:
 

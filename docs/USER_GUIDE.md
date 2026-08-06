@@ -22,6 +22,14 @@ Install the package:
 npm install -g onepassword-agent-mcp
 ```
 
+Run the guided installer:
+
+```bash
+onepassword-agent-mcp install
+```
+
+It explains each change before making it. On a Mac, you may choose a visible menu-bar shortcut; launch at login is a separate optional question and defaults to off.
+
 Check your machine:
 
 ```bash
@@ -180,18 +188,25 @@ For stricter production or headless use, create a 1Password service account that
 
 ## Is It Always Running?
 
-No. Installing 1Password Agent MCP adds local commands and lets MCP clients launch the server when needed. It does not install a startup item or hidden background service.
+No. Installing 1Password Agent MCP adds local commands and lets MCP clients launch the server when needed. The npm installation itself does not install a startup item or hidden background service.
 
 - The approval console runs only while `onepassword-agent-mcp admin` is running.
 - The MCP server runs only when an MCP client launches `onepassword-agent-mcp mcp`.
 - Client setup writes client config, so the client can launch the MCP later.
-- Restarting the computer does not auto-start this project by itself.
+- The optional Mac menu-bar app is installed only when you choose it and is visible while running. It starts the admin console only when you ask.
+- Restarting the computer does not auto-start this project unless you separately enabled **Launch Menu Bar at Login** or an MCP client starts it.
 
 Run this any time:
 
 ```bash
 onepassword-agent-mcp runtime
 ```
+
+## Optional Mac Menu Bar
+
+Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the shield-and-lock symbol. From that symbol you can open, start, or stop the admin console, change launch at login, remove the shortcut, or quit it.
+
+The app is compiled locally from readable Swift source. It lives in your user `Applications` folder, requires no administrator password, and can be removed without deleting approvals or anything in 1Password.
 
 ## Uninstall
 

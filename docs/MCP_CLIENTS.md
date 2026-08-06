@@ -140,11 +140,12 @@ http://127.0.0.1:7319
 
 ## Runtime Behavior
 
-Installing the package creates CLI commands. It does not start anything at boot.
+Installing the package creates CLI commands. The package installation alone does not start anything at boot.
 
 - The admin UI exists only while `onepassword-agent-mcp admin` is running.
 - MCP clients launch `onepassword-agent-mcp mcp` as a stdio child process when the client session needs the server.
 - The setup command writes MCP client configuration; it does not install a daemon or service.
+- The optional visible macOS menu-bar shortcut is installed only after a separate explicit choice. Launch at login is off by default.
 
 Show the same explanation locally:
 

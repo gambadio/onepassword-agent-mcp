@@ -227,6 +227,31 @@
         </details>
       </section>
 
+      <section id="menuBarPanel" class="panel wide companionPanel">
+        <div class="panelHeader">
+          <div>
+            <h2>Mac Menu Bar Shortcut</h2>
+            <p id="menuBarDescription" class="hint">Checking the optional local shortcut...</p>
+          </div>
+          <span id="menuBarStatus" class="pill">Checking</span>
+        </div>
+        <div class="companionControls">
+          <label class="switch">
+            <input id="menuBarToggle" type="checkbox" />
+            <span>Show the visible menu-bar shortcut</span>
+          </label>
+          <label class="switch">
+            <input id="menuBarLoginToggle" type="checkbox" />
+            <span>Show it automatically after Mac login</span>
+          </label>
+          <div class="actions">
+            <button id="menuBarLaunchBtn" class="secondary" type="button" hidden>Open Shortcut</button>
+            <button id="menuBarUpdateBtn" class="secondary" type="button" hidden>Update Shortcut</button>
+          </div>
+        </div>
+        <p class="hint companionNote">The shortcut is optional. It starts no admin server until you open the console, stays visible while running, and can remove itself without touching MCPVAULT or your approvals.</p>
+      </section>
+
       <section class="panel wide">
         <details>
           <summary>Advanced local settings</summary>

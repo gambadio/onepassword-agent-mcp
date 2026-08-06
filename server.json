@@ -1,0 +1,33 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.gambadio/onepassword-agent-mcp",
+  "description": "Local, approval-based MCP access to a dedicated 1Password vault. Agents receive encrypted handles while secret values are resolved locally only for approved copy or paste actions.",
+  "repository": {
+    "url": "https://github.com/gambadio/onepassword-agent-mcp",
+    "source": "github"
+  },
+  "version": "0.3.0",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/gambadio/onepassword-agent-mcp/main/public/assets/logo.svg",
+      "mimeType": "image/svg+xml",
+      "sizes": ["any"]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "onepassword-agent-mcp",
+      "version": "0.3.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp"
+        }
+      ]
+    }
+  ]
+}

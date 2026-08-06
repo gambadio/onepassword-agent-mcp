@@ -2,8 +2,10 @@
 import { spawnSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { startAdmin } from "./admin.js";
 import { startMcp } from "./mcp.js";
+import { getMenuBarStatus, installMenuBar, launchMenuBar, quitMenuBar, setMenuBarLaunchAtLogin, uninstallMenuBar, } from "./menuBar.js";
 import { appHome, keyPath, policyPath } from "./paths.js";
 import { OpCli } from "./opCli.js";
 import { StateStore } from "./state.js";
@@ -35,8 +37,14 @@ async function main(argv) {
         case "runtime":
             printRuntimeInfo();
             return;
+        case "install":
+            await guidedInstall();
+            return;
         case "setup":
             await setup(normalizeTarget(args.positionals[0] || "all"), args);
+            return;
+        case "menubar":
+            await manageMenuBar(args);
             return;
         case "uninstall":
             await uninstall(normalizeUninstallTarget(args.positionals[0] || "all"), args);
@@ -57,8 +65,10 @@ function normalizeCommand(command) {
         return "mcp";
     if (command === "check")
         return "doctor";
-    if (command === "install" || command === "configure" || command === "config")
+    if (command === "configure" || command === "config")
         return "setup";
+    if (command === "menu-bar" || command === "tray")
+        return "menubar";
     if (command === "remove" || command === "disconnect" || command === "teardown")
         return "uninstall";
     if (command === "background" || command === "status" || command === "transparency")
@@ -71,6 +81,8 @@ function parseArgs(argv) {
     let json = false;
     let scope = "user";
     let help = false;
+    let launch = true;
+    let launchAtLogin;
     for (let index = 0; index < argv.length; index += 1) {
         const arg = argv[index];
         if (arg === "--apply" || arg === "--yes") {
@@ -81,6 +93,15 @@ function parseArgs(argv) {
         }
         else if (arg === "--json") {
             json = true;
+        }
+        else if (arg === "--no-launch") {
+            launch = false;
+        }
+        else if (arg === "--launch-at-login") {
+            launchAtLogin = true;
+        }
+        else if (arg === "--no-launch-at-login") {
+            launchAtLogin = false;
         }
         else if (arg === "--scope") {
             const value = argv[index + 1];
@@ -99,7 +120,7 @@ function parseArgs(argv) {
             positionals.push(arg);
         }
     }
-    return { positionals, apply, json, scope, help };
+    return { positionals, apply, json, scope, help, launch, launchAtLogin };
 }
 function normalizeTarget(target) {
     const value = target.toLowerCase();
@@ -120,6 +141,8 @@ function normalizeUninstallTarget(target) {
     const value = target.toLowerCase();
     if (value === "state" || value === "local-state" || value === "data" || value === "policy")
         return "state";
+    if (value === "menubar" || value === "menu-bar" || value === "tray")
+        return "menubar";
     return normalizeTarget(target);
 }
 async function doctor() {
@@ -186,6 +209,17 @@ async function doctor() {
         warn(`Admin UI is not running. Start it with: onepassword-agent-mcp admin`);
         console.log(`    Then open ${adminUrl}`);
     }
+    const menuBar = await getMenuBarStatus(file.settings);
+    if (menuBar.installed) {
+        ok(`Menu-bar shortcut: installed${menuBar.running ? " and running" : ""}`);
+        if (menuBar.launchAtLogin)
+            console.log("    It is configured to launch visibly in the menu bar after login.");
+        if (menuBar.needsUpdate)
+            warn("Menu-bar shortcut was built by an older package version. Refresh it in the admin UI.");
+    }
+    else if (menuBar.supported) {
+        console.log("INFO Menu-bar shortcut: not installed (optional)");
+    }
     console.log("");
     printRuntimeSummary();
     console.log("");
@@ -204,6 +238,7 @@ function printRuntimeInfo() {
     console.log("Stop:");
     console.log("  Admin console: press Ctrl-C in the terminal running onepassword-agent-mcp admin.");
     console.log("  MCP server: close the MCP client session that launched it.");
+    console.log("  Menu bar: choose Quit Menu Bar, or run onepassword-agent-mcp menubar quit.");
     console.log("");
     console.log("Uninstall:");
     console.log("  onepassword-agent-mcp uninstall all");
@@ -216,10 +251,126 @@ function printRuntimeInfo() {
 }
 function printRuntimeSummary() {
     console.log("Runtime model:");
-    console.log("  No launch agent, daemon, service, or startup item is installed.");
+    console.log("  npm installation itself adds no launch agent, daemon, service, or startup item.");
     console.log("  The admin console runs only while onepassword-agent-mcp admin is running.");
     console.log("  MCP clients launch onepassword-agent-mcp mcp as a stdio child process when they need it.");
+    console.log("  The optional macOS menu-bar shortcut is installed only after an explicit choice and is always visible while running.");
+    console.log("  Launch at login is separate, off by default, and removable from the menu, admin UI, or CLI.");
     console.log(`  Persistent local files live in ${appHome()}.`);
+}
+async function guidedInstall() {
+    console.log("1Password Agent MCP guided install\n");
+    console.log("Nothing is added to login items or left running invisibly by this package.");
+    console.log("This wizard changes only the options you approve.\n");
+    if (!process.stdin.isTTY || !process.stdout.isTTY) {
+        console.log("Interactive input is unavailable. Use these explicit commands instead:");
+        console.log("  onepassword-agent-mcp setup all --apply");
+        if (process.platform === "darwin")
+            console.log("  onepassword-agent-mcp menubar install");
+        console.log("  onepassword-agent-mcp admin");
+        return;
+    }
+    const prompt = createInterface({ input: process.stdin, output: process.stdout });
+    try {
+        const detected = ["claude-code", "codex", "copilot"].filter((target) => {
+            return commandExists(targetSpec(target, "user").command);
+        });
+        if (detected.length) {
+            const labels = detected.map((target) => targetSpec(target, "user").label).join(", ");
+            if (await askYesNo(prompt, `Connect the detected MCP clients (${labels})?`, true)) {
+                for (const target of detected)
+                    applySetup(target, "user");
+            }
+        }
+        else {
+            warn("No supported MCP client CLI was detected. You can configure one later with onepassword-agent-mcp setup.");
+        }
+        if (process.platform === "darwin" && await askYesNo(prompt, "Install the optional visible menu-bar shortcut for opening the admin console?", false)) {
+            const launchAtLogin = await askYesNo(prompt, "Show that menu-bar shortcut automatically after login?", false);
+            const file = await new StateStore().load();
+            await installMenuBar(file.settings, { launch: true, launchAtLogin });
+            ok("Menu-bar shortcut installed in your user Applications folder.");
+        }
+    }
+    finally {
+        prompt.close();
+    }
+    console.log("\nSetup finished.");
+    console.log("Run onepassword-agent-mcp admin, or use the menu-bar shortcut if you installed it.");
+    console.log("Run onepassword-agent-mcp doctor to see every active part.");
+}
+async function manageMenuBar(args) {
+    const action = (args.positionals[0] || "status").toLowerCase();
+    const file = await new StateStore().load();
+    if (action === "status") {
+        const status = await getMenuBarStatus(file.settings);
+        if (args.json)
+            console.log(JSON.stringify(status, null, 2));
+        else
+            printMenuBarStatus(status);
+        return;
+    }
+    if (action === "install" || action === "enable" || action === "update") {
+        const status = await installMenuBar(file.settings, {
+            launch: args.launch,
+            launchAtLogin: args.launchAtLogin,
+        });
+        ok(`Menu-bar shortcut installed: ${status.appPath}`);
+        console.log(`Launch at login: ${status.launchAtLogin ? "on" : "off"}`);
+        console.log("Remove it with: onepassword-agent-mcp menubar uninstall --apply");
+        return;
+    }
+    if (action === "uninstall" || action === "remove" || action === "disable") {
+        const status = await getMenuBarStatus(file.settings);
+        console.log("1Password Agent MCP menu-bar removal\n");
+        console.log(`Shortcut: ${status.appPath}`);
+        console.log(`Login item: ${status.launchAgentPath}`);
+        console.log("MCP client configuration, local approvals, MCPVAULT, and 1Password items are not removed.\n");
+        if (!args.apply) {
+            console.log("Dry run only. Apply with:");
+            console.log("  onepassword-agent-mcp menubar uninstall --apply");
+            return;
+        }
+        await uninstallMenuBar(file.settings);
+        ok("Menu-bar shortcut and its login item removed.");
+        return;
+    }
+    if (action === "launch" || action === "open" || action === "start") {
+        launchMenuBar();
+        ok("Menu-bar shortcut opened.");
+        return;
+    }
+    if (action === "quit" || action === "stop") {
+        quitMenuBar();
+        ok("Menu-bar shortcut quit. It remains installed.");
+        return;
+    }
+    if (action === "login") {
+        const value = (args.positionals[1] || "").toLowerCase();
+        if (value !== "on" && value !== "off")
+            throw new Error("Use: onepassword-agent-mcp menubar login on|off");
+        await setMenuBarLaunchAtLogin(value === "on");
+        ok(`Menu-bar launch at login ${value === "on" ? "enabled" : "disabled"}.`);
+        return;
+    }
+    throw new Error(`Unknown menubar action: ${action}`);
+}
+function printMenuBarStatus(status) {
+    console.log("1Password Agent MCP menu bar\n");
+    console.log(`Platform support: ${status.supported ? "yes" : "no"}`);
+    console.log(`Installed: ${status.installed ? "yes" : "no"}`);
+    console.log(`Running visibly: ${status.running ? "yes" : "no"}`);
+    console.log(`Launch at login: ${status.launchAtLogin ? "yes" : "no"}`);
+    console.log(`App: ${status.appPath}`);
+    if (status.reason)
+        console.log(`Note: ${status.reason}`);
+}
+async function askYesNo(prompt, question, defaultValue) {
+    const suffix = defaultValue ? " [Y/n] " : " [y/N] ";
+    const answer = (await prompt.question(`${question}${suffix}`)).trim().toLowerCase();
+    if (!answer)
+        return defaultValue;
+    return answer === "y" || answer === "yes";
 }
 async function setup(target, args) {
     const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
@@ -240,6 +391,10 @@ async function uninstall(target, args) {
         await uninstallState(args);
         return;
     }
+    if (target === "menubar") {
+        await manageMenuBar({ ...args, positionals: ["uninstall"] });
+        return;
+    }
     const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
     if (args.json || target === "generic") {
         printGenericUninstall();
@@ -247,10 +402,23 @@ async function uninstall(target, args) {
     }
     if (!args.apply) {
         printUninstallPlan(targets, args.scope);
+        if (target === "all") {
+            console.log("Optional macOS menu-bar shortcut");
+            console.log("  Remove it if installed, including its explicit launch-at-login item.");
+            console.log("");
+        }
         return;
     }
     for (const item of targets) {
         applyUninstall(item, args.scope);
+    }
+    if (target === "all") {
+        const file = await new StateStore().load();
+        const menuBar = await getMenuBarStatus(file.settings);
+        if (menuBar.installed || menuBar.launchAtLogin) {
+            await uninstallMenuBar(file.settings);
+            ok("Menu-bar shortcut: removed");
+        }
     }
     console.log("");
     console.log("MCP client entries removed where supported.");
@@ -292,6 +460,11 @@ function printSetupPlan(targets, scope) {
     console.log("After setup, run:");
     console.log("  onepassword-agent-mcp admin");
     console.log("  onepassword-agent-mcp doctor");
+    if (process.platform === "darwin") {
+        console.log("");
+        console.log("Optional visible macOS menu-bar shortcut:");
+        console.log("  onepassword-agent-mcp menubar install");
+    }
 }
 function printUninstallPlan(targets, scope) {
     console.log("1Password Agent MCP uninstall\n");
@@ -483,19 +656,23 @@ function printHelp() {
     console.log(`1Password Agent MCP
 
 Usage:
+  onepassword-agent-mcp install
   onepassword-agent-mcp admin
   onepassword-agent-mcp mcp
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
   onepassword-agent-mcp setup [all|claude-code|codex|copilot|generic] [--apply]
-  onepassword-agent-mcp uninstall [all|claude-code|codex|copilot|generic|state] [--apply]
+  onepassword-agent-mcp menubar [status|install|launch|quit|login|uninstall]
+  onepassword-agent-mcp uninstall [all|claude-code|codex|copilot|generic|menubar|state] [--apply]
 
 Commands:
+  install    Run the guided, interactive installer.
   admin      Start the local approval console at http://127.0.0.1:7319
   mcp        Start the stdio MCP server. MCP clients run this command.
   doctor     Check Node.js, 1Password CLI, auth, local state, and admin UI.
   runtime    Explain what runs, what persists, and how to stop it.
   setup      Print or apply client MCP configuration.
+  menubar    Manage the optional visible macOS menu-bar shortcut.
   uninstall  Print or apply client MCP removal. State removal is explicit.
 
 Setup examples:
@@ -505,6 +682,15 @@ Setup examples:
   onepassword-agent-mcp setup codex --apply
   onepassword-agent-mcp setup copilot --apply
   onepassword-agent-mcp setup generic --json
+
+Menu-bar examples (macOS only):
+  onepassword-agent-mcp menubar status
+  onepassword-agent-mcp menubar install
+  onepassword-agent-mcp menubar install --launch-at-login
+  onepassword-agent-mcp menubar login off
+  onepassword-agent-mcp menubar quit
+  onepassword-agent-mcp menubar uninstall
+  onepassword-agent-mcp menubar uninstall --apply
 
 Uninstall examples:
   onepassword-agent-mcp uninstall all

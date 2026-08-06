@@ -4,6 +4,8 @@
 
 Installing the npm package adds CLI commands. Running `setup --apply` writes MCP client configuration. Neither action installs a launch agent, daemon, service, startup item, browser extension, or hidden resident process.
 
+The optional macOS menu-bar shortcut is different: it is installed only after you explicitly choose it in the guided installer or admin page. Its icon remains visible while it is running, and launch at login is a separate setting that defaults to off.
+
 ## Stop Running Processes
 
 Stop the admin console by pressing `Ctrl-C` in the terminal running:
@@ -13,6 +15,12 @@ onepassword-agent-mcp admin
 ```
 
 The MCP server is normally a child process of your MCP client. Close the client session, or remove the MCP client configuration below.
+
+Quit the optional menu-bar shortcut from its own menu, or run:
+
+```bash
+onepassword-agent-mcp menubar quit
+```
 
 ## Disconnect MCP Clients
 
@@ -32,8 +40,18 @@ This removes:
 
 - Claude Code config with `claude mcp remove`.
 - Codex config with `codex mcp remove`.
+- The optional menu-bar app and its launch-at-login item, if installed.
 
 For GitHub Copilot in VS Code, remove the server named `onepassword-agent-mcp` from VS Code's MCP configuration UI. If you used workspace config, remove the `onepassword-agent-mcp` block from `.vscode/mcp.json`.
+
+To remove only the menu-bar shortcut:
+
+```bash
+onepassword-agent-mcp menubar uninstall
+onepassword-agent-mcp menubar uninstall --apply
+```
+
+This leaves the MCP connection and local approvals in place.
 
 ## Remove The npm Package
 

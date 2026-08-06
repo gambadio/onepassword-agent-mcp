@@ -37,13 +37,31 @@ Click **Authorize** only for MCP clients you trust.
 npm install -g onepassword-agent-mcp
 ```
 
-Run:
+Run the guided installer:
+
+```bash
+onepassword-agent-mcp install
+```
+
+It asks before connecting detected MCP clients. On macOS it separately asks whether to install the visible menu-bar shortcut and whether that shortcut should appear after login. Both menu-bar choices are optional; launch at login defaults to off.
+
+Then run:
 
 ```bash
 onepassword-agent-mcp doctor
 ```
 
 Fix any required checks before continuing.
+
+### Optional macOS menu-bar shortcut
+
+The shortcut can also be installed later:
+
+```bash
+onepassword-agent-mcp menubar install
+```
+
+It is compiled locally from the package's Swift source and installed in `~/Applications`. It does not start the admin server until you choose **Open Admin Console**. Enable or remove it at any time from the admin page or with `onepassword-agent-mcp menubar` commands.
 
 ## 4. Connect MCP Clients
 
@@ -167,7 +185,7 @@ Your approvals live in `~/.onepassword-mcp` and are not replaced by reinstalling
 
 ## Stop Or Uninstall
 
-The package does not install a launch agent, daemon, service, startup item, browser extension, or hidden background process.
+The npm package itself does not install a launch agent, daemon, service, startup item, browser extension, or hidden background process. The optional menu-bar shortcut and its separate launch-at-login setting are installed only after an explicit choice and remain visible while running.
 
 Stop the admin console with `Ctrl-C` in the terminal that is running:
 
@@ -181,6 +199,8 @@ Disconnect supported MCP clients:
 onepassword-agent-mcp uninstall all
 onepassword-agent-mcp uninstall all --apply
 ```
+
+That also removes the optional menu-bar shortcut and login item if present. It does not delete 1Password data.
 
 Remove the npm package:
 
