@@ -148,11 +148,17 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         let alert = NSAlert()
         alert.messageText = "Uninstall the menu-bar shortcut?"
         alert.informativeText = "This removes the installed menu helper and its login item. Your MCP setup, approvals, MCPVAULT, and 1Password items stay untouched. To install it again later, run onepassword-agent-mcp menubar install in Terminal or enable it in the admin page."
-        alert.addButton(withTitle: "Cancel")
-        alert.addButton(withTitle: "Uninstall Shortcut")
+        let uninstallButton = alert.addButton(withTitle: "Uninstall Shortcut")
+        uninstallButton.hasDestructiveAction = true
+        uninstallButton.keyEquivalent = ""
+        let cancelButton = alert.addButton(withTitle: "Cancel")
+        cancelButton.keyEquivalent = "\u{1b}"
         alert.alertStyle = .warning
+        if let cancelCell = cancelButton.cell as? NSButtonCell {
+            alert.window.defaultButtonCell = cancelCell
+        }
         NSApp.activate(ignoringOtherApps: true)
-        guard alert.runModal() == .alertSecondButtonReturn else { return }
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
         _ = runCli(["menubar", "uninstall", "--apply"], wait: false)
         NSApp.terminate(nil)
     }

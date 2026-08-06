@@ -26,8 +26,10 @@ test("menu-bar status item has an identifiable 1Password label", async () => {
   assert.match(source, /@objc private func uninstallShortcut\(\)/);
   assert.match(source, /DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ 0\.5\)/);
   assert.match(source, /private func confirmUninstallShortcut\(\)/);
-  assert.match(source, /alert\.addButton\(withTitle: "Cancel"\)/);
-  assert.match(source, /alert\.runModal\(\) == \.alertSecondButtonReturn/);
+  assert.match(source, /uninstallButton\.hasDestructiveAction = true/);
+  assert.match(source, /cancelButton\.keyEquivalent = "\\u\{1b\}"/);
+  assert.match(source, /alert\.window\.defaultButtonCell = cancelCell/);
+  assert.match(source, /alert\.runModal\(\) == \.alertFirstButtonReturn/);
   assert.match(source, /runCli\(\["menubar", "uninstall", "--apply"\], wait: false\)/);
   assert.doesNotMatch(source, /Start Admin Console/);
   assert.doesNotMatch(source, /Quit Menu Bar/);
