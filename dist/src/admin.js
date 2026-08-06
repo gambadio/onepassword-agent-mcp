@@ -2,6 +2,7 @@
 import express from "express";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { adminShutdownHeader, adminShutdownTokenMatches, clearAdminRuntime, createAdminRuntimeRecord, writeAdminRuntime, } from "./adminRuntime.js";
 import { loadOrCreateKey, openJson } from "./cryptoBox.js";
 import { getMenuBarStatus, installMenuBar, launchMenuBar, quitMenuBar, setMenuBarLaunchAtLogin, uninstallMenuBar, } from "./menuBar.js";
 import { OpCli } from "./opCli.js";
@@ -10,9 +11,24 @@ import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
 const store = new StateStore();
 const policyService = new PolicyService(store);
-export async function createAdminApp() {
+export async function createAdminApp(options = {}) {
     const app = express();
     app.use(express.json({ limit: "1mb" }));
+    app.get("/api/health", (_req, res) => {
+        res.setHeader("Cache-Control", "no-store");
+        res.json({ ok: true });
+    });
+    if (options.shutdownToken && options.onShutdownRequested) {
+        app.post("/api/runtime/stop", (req, res) => {
+            const supplied = req.header(adminShutdownHeader);
+            if (!adminShutdownTokenMatches(options.shutdownToken, supplied)) {
+                res.status(401).json({ error: "Valid local shutdown token required." });
+                return;
+            }
+            res.status(202).json({ ok: true });
+            res.once("finish", () => setImmediate(options.onShutdownRequested));
+        });
+    }
     app.use("/api", adminGuard);
     app.get("/api/status", async (_req, res) => {
         const file = await store.load();
@@ -363,9 +379,66 @@ export async function createAdminApp() {
 }
 export async function startAdmin() {
     const file = await store.load();
-    const app = await createAdminApp();
-    app.listen(file.settings.adminPort, file.settings.adminHost, () => {
-        console.log(`1Password Agent MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
+    const runtime = createAdminRuntimeRecord(file.settings);
+    let requestShutdown = () => { };
+    const app = await createAdminApp({
+        shutdownToken: runtime.shutdownToken,
+        onShutdownRequested: () => requestShutdown(),
+    });
+    const server = await listen(app, file.settings.adminPort, file.settings.adminHost);
+    try {
+        await writeAdminRuntime(runtime);
+    }
+    catch (error) {
+        server.close();
+        throw error;
+    }
+    let shutdownPromise;
+    const shutdown = () => {
+        if (shutdownPromise)
+            return shutdownPromise;
+        shutdownPromise = closeAdminServer(server).finally(() => clearAdminRuntime(runtime.instanceId));
+        return shutdownPromise;
+    };
+    requestShutdown = () => {
+        void shutdown().catch((error) => console.error(`Could not stop admin console: ${error.message}`));
+    };
+    process.once("SIGINT", requestShutdown);
+    process.once("SIGTERM", requestShutdown);
+    server.once("close", () => {
+        void clearAdminRuntime(runtime.instanceId);
+    });
+    console.log(`1Password Agent MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
+}
+function listen(app, port, host) {
+    return new Promise((resolve, reject) => {
+        const server = app.listen(port, host);
+        const onError = (error) => reject(error);
+        server.once("error", onError);
+        server.once("listening", () => {
+            server.off("error", onError);
+            resolve(server);
+        });
+    });
+}
+function closeAdminServer(server) {
+    return new Promise((resolve, reject) => {
+        let finished = false;
+        const finish = (error) => {
+            if (finished)
+                return;
+            finished = true;
+            clearTimeout(forceTimer);
+            if (error)
+                reject(error);
+            else
+                resolve();
+        };
+        const forceTimer = setTimeout(() => {
+            server.closeAllConnections();
+            finish();
+        }, 1_500);
+        server.close((error) => finish(error || undefined));
     });
 }
 function adminGuard(req, res, next) {

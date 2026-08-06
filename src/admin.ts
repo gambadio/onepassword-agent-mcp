@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 import express, { type NextFunction, type Request, type Response } from "express";
+import type { Server } from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import {
+  adminShutdownHeader,
+  adminShutdownTokenMatches,
+  clearAdminRuntime,
+  createAdminRuntimeRecord,
+  writeAdminRuntime,
+} from "./adminRuntime.js";
 import { loadOrCreateKey, openJson } from "./cryptoBox.js";
 import {
   getMenuBarStatus,
@@ -20,9 +28,32 @@ import type { CandidateGroup, CandidatePayload, OpVaultSummary, PolicyFile, Prof
 const store = new StateStore();
 const policyService = new PolicyService(store);
 
-export async function createAdminApp() {
+interface AdminAppOptions {
+  shutdownToken?: string;
+  onShutdownRequested?: () => void;
+}
+
+export async function createAdminApp(options: AdminAppOptions = {}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
+
+  app.get("/api/health", (_req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ok: true });
+  });
+
+  if (options.shutdownToken && options.onShutdownRequested) {
+    app.post("/api/runtime/stop", (req, res) => {
+      const supplied = req.header(adminShutdownHeader);
+      if (!adminShutdownTokenMatches(options.shutdownToken!, supplied)) {
+        res.status(401).json({ error: "Valid local shutdown token required." });
+        return;
+      }
+      res.status(202).json({ ok: true });
+      res.once("finish", () => setImmediate(options.onShutdownRequested!));
+    });
+  }
+
   app.use("/api", adminGuard);
 
   app.get("/api/status", async (_req, res) => {
@@ -411,9 +442,66 @@ export async function createAdminApp() {
 
 export async function startAdmin(): Promise<void> {
   const file = await store.load();
-  const app = await createAdminApp();
-  app.listen(file.settings.adminPort, file.settings.adminHost, () => {
-    console.log(`1Password Agent MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
+  const runtime = createAdminRuntimeRecord(file.settings);
+  let requestShutdown = () => {};
+  const app = await createAdminApp({
+    shutdownToken: runtime.shutdownToken,
+    onShutdownRequested: () => requestShutdown(),
+  });
+  const server = await listen(app, file.settings.adminPort, file.settings.adminHost);
+
+  try {
+    await writeAdminRuntime(runtime);
+  } catch (error) {
+    server.close();
+    throw error;
+  }
+
+  let shutdownPromise: Promise<void> | undefined;
+  const shutdown = () => {
+    if (shutdownPromise) return shutdownPromise;
+    shutdownPromise = closeAdminServer(server).finally(() => clearAdminRuntime(runtime.instanceId));
+    return shutdownPromise;
+  };
+  requestShutdown = () => {
+    void shutdown().catch((error) => console.error(`Could not stop admin console: ${(error as Error).message}`));
+  };
+  process.once("SIGINT", requestShutdown);
+  process.once("SIGTERM", requestShutdown);
+  server.once("close", () => {
+    void clearAdminRuntime(runtime.instanceId);
+  });
+
+  console.log(`1Password Agent MCP admin UI: http://${file.settings.adminHost}:${file.settings.adminPort}`);
+}
+
+function listen(app: ReturnType<typeof express>, port: number, host: string): Promise<Server> {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(port, host);
+    const onError = (error: Error) => reject(error);
+    server.once("error", onError);
+    server.once("listening", () => {
+      server.off("error", onError);
+      resolve(server);
+    });
+  });
+}
+
+function closeAdminServer(server: Server): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let finished = false;
+    const finish = (error?: Error) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(forceTimer);
+      if (error) reject(error);
+      else resolve();
+    };
+    const forceTimer = setTimeout(() => {
+      server.closeAllConnections();
+      finish();
+    }, 1_500);
+    server.close((error) => finish(error || undefined));
   });
 }
 

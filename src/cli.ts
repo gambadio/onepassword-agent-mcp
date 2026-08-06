@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { startAdmin } from "./admin.js";
+import { getAdminRuntimeStatus, stopAdmin } from "./adminRuntime.js";
 import {
   type ClientResult,
   type ClientTarget,
@@ -59,7 +60,7 @@ async function main(argv: string[]): Promise<void> {
 
   switch (command) {
     case "admin":
-      await startAdmin();
+      await manageAdmin(args);
       return;
     case "mcp":
       await startMcp();
@@ -90,6 +91,36 @@ async function main(argv: string[]): Promise<void> {
       printHelp();
       process.exitCode = 1;
   }
+}
+
+async function manageAdmin(args: ParsedArgs): Promise<void> {
+  const action = (args.positionals[0] || "start").toLowerCase();
+  if (action === "start" || action === "run" || action === "open") {
+    await startAdmin();
+    return;
+  }
+
+  const file = await new StateStore().load();
+  if (action === "status") {
+    const status = await getAdminRuntimeStatus(file.settings);
+    if (args.json) {
+      console.log(JSON.stringify(status, null, 2));
+      return;
+    }
+    console.log("1Password Agent MCP admin console\n");
+    console.log(`Running: ${status.running ? "yes" : "no"}`);
+    console.log(`Managed stop available: ${status.managed ? "yes" : "no"}`);
+    console.log(`URL: ${status.url}`);
+    return;
+  }
+
+  if (action === "stop" || action === "quit") {
+    const result = await stopAdmin(file.settings, { expectedCliPath: process.argv[1] });
+    ok(result.wasRunning ? "Admin console stopped." : "Admin console was already stopped.");
+    return;
+  }
+
+  throw new Error(`Unknown admin action: ${action}. Use start, status, or stop.`);
 }
 
 function normalizeCommand(command: string): string {
@@ -583,7 +614,7 @@ function printHelp(): void {
 
 Usage:
   onepassword-agent-mcp install
-  onepassword-agent-mcp admin
+  onepassword-agent-mcp admin [start|status|stop]
   onepassword-agent-mcp mcp
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
@@ -593,7 +624,7 @@ Usage:
 
 Commands:
   install    Run the guided, interactive installer.
-  admin      Start the local approval console at http://127.0.0.1:7319
+  admin      Start, inspect, or stop the local approval console.
   mcp        Start the stdio MCP server. MCP clients run this command.
   doctor     Check Node.js, 1Password CLI, auth, local state, and admin UI.
   runtime    Explain what runs, what persists, and how to stop it.
@@ -608,6 +639,11 @@ Setup examples:
   onepassword-agent-mcp setup xcode --apply
   onepassword-agent-mcp setup raycast --apply
   onepassword-agent-mcp setup generic --json
+
+Admin-console examples:
+  onepassword-agent-mcp admin
+  onepassword-agent-mcp admin status
+  onepassword-agent-mcp admin stop
 
 Menu-bar examples (macOS only):
   onepassword-agent-mcp menubar status

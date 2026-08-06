@@ -63,6 +63,8 @@ onepassword-agent-mcp menubar install
 
 It is compiled locally from the package's Swift source and installed in `~/Applications`. It does not start the admin server until you choose **Open Admin Console**. Enable or remove it at any time from the admin page or with `onepassword-agent-mcp menubar` commands.
 
+If the shortcut is merely closed, reopen it with `onepassword-agent-mcp menubar launch`. If you removed it, restore it with `onepassword-agent-mcp menubar install`. Turn automatic login launch back on with `onepassword-agent-mcp menubar login on`.
+
 ## 4. Connect MCP Clients
 
 Dry run:

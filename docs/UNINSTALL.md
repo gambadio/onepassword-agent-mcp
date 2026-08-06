@@ -8,7 +8,13 @@ The optional macOS menu-bar shortcut is different: it is installed only after yo
 
 ## Stop Running Processes
 
-Stop the admin console by pressing `Ctrl-C` in the terminal running:
+Stop the admin console from its menu or from any terminal:
+
+```bash
+onepassword-agent-mcp admin stop
+```
+
+You can also press `Ctrl-C` in the terminal running:
 
 ```bash
 onepassword-agent-mcp admin
@@ -20,6 +26,13 @@ Quit the optional menu-bar shortcut from its own menu, or run:
 
 ```bash
 onepassword-agent-mcp menubar quit
+```
+
+Closing or removing the shortcut does not prevent you from restoring it later:
+
+```bash
+onepassword-agent-mcp menubar launch   # installed but closed
+onepassword-agent-mcp menubar install  # removed
 ```
 
 ## Disconnect MCP Clients

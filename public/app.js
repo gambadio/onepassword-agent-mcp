@@ -912,12 +912,12 @@ async function toggleMenuBar() {
       body: JSON.stringify({ launch: true, launchAtLogin: menuBarLoginToggle.checked }),
     });
     renderMenuBar(status);
-    setMessage("Menu-bar shortcut installed and opened. Look for the shield-and-lock symbol at the top of your Mac screen.");
+    setMessage("Menu-bar shortcut installed and opened. Look for the 1P label at the top of your Mac screen.");
     return;
   }
 
   const confirmed = window.confirm(
-    "Remove the menu-bar shortcut?\n\nThis removes only the shortcut and its login item. MCPVAULT, approvals, and 1Password items stay untouched.",
+    "Remove the menu-bar shortcut?\n\nThis removes only the shortcut and its login item. MCPVAULT, approvals, and 1Password items stay untouched. You can add it again with onepassword-agent-mcp menubar install.",
   );
   if (!confirmed) {
     menuBarToggle.checked = true;
@@ -926,7 +926,7 @@ async function toggleMenuBar() {
 
   const status = await api("/api/menubar", { method: "DELETE" });
   renderMenuBar(status);
-  setMessage("Menu-bar shortcut removed. If it started this console, this page will close; your MCP and 1Password data stay unchanged.");
+  setMessage("Menu-bar shortcut removed. Add it again later with onepassword-agent-mcp menubar install. Your MCP and 1Password data stay unchanged.");
 }
 
 async function toggleMenuBarLogin() {

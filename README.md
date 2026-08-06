@@ -103,13 +103,24 @@ Manual controls:
 ```bash
 onepassword-agent-mcp menubar status
 onepassword-agent-mcp menubar install
+onepassword-agent-mcp menubar launch
 onepassword-agent-mcp menubar install --launch-at-login
+onepassword-agent-mcp menubar login on
 onepassword-agent-mcp menubar login off
 onepassword-agent-mcp menubar quit
 onepassword-agent-mcp menubar uninstall --apply
 ```
 
-The menu contains **Open Admin Console**, **Start/Stop Admin Console**, **Launch Menu Bar at Login**, **Remove Menu Bar Shortcut**, and **Quit Menu Bar**. Removing it leaves MCP client configuration, local approvals, `MCPVAULT`, and all 1Password items untouched.
+Use `menubar launch` when the shortcut is installed but closed. Use `menubar install` when you removed it and want it back. The local admin page offers the same controls under **Mac Menu Bar Shortcut** while the admin console is running.
+
+The menu contains **Open Admin Console**, **Start/Stop Admin Console**, **Launch Menu Bar at Login**, **Remove Menu Bar Shortcut**, and **Quit Menu Bar**. **Stop Admin Console** also stops a console started from Terminal or an earlier menu session. Removing the shortcut leaves MCP client configuration, local approvals, `MCPVAULT`, and all 1Password items untouched.
+
+The admin console itself has explicit process controls:
+
+```bash
+onepassword-agent-mcp admin status
+onepassword-agent-mcp admin stop
+```
 
 ## Requirements
 

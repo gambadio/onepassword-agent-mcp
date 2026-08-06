@@ -61,6 +61,7 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         }
 
         let menu = NSMenu()
+        menu.autoenablesItems = false
         let title = NSMenuItem(title: "1Password Agent MCP", action: nil, keyEquivalent: "")
         title.isEnabled = false
         menu.addItem(title)
@@ -120,9 +121,23 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     @objc private func stopAdmin() {
-        guard let process = adminProcess, process.isRunning else { return }
-        process.terminate()
         statusMenuItem.title = "Stopping admin console..."
+        stopMenuItem.isEnabled = false
+        if let process = adminProcess, process.isRunning {
+            process.terminate()
+            return
+        }
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self else { return }
+            let exitCode = self.runCli(["admin", "stop"], wait: true)
+            DispatchQueue.main.async {
+                if exitCode != 0 {
+                    self.showError("Could not stop the admin console. Run onepassword-agent-mcp admin stop in Terminal for details.")
+                }
+                self.refreshStatus()
+            }
+        }
     }
 
     @objc private func toggleLaunchAtLogin() {
@@ -137,7 +152,7 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
     @objc private func removeShortcut() {
         let alert = NSAlert()
         alert.messageText = "Remove the menu-bar shortcut?"
-        alert.informativeText = "This removes only the visible shortcut and its login item. Your MCP setup, approvals, MCPVAULT, and 1Password items stay untouched."
+        alert.informativeText = "This removes only the visible shortcut and its login item. Your MCP setup, approvals, MCPVAULT, and 1Password items stay untouched. To add it again later, run onepassword-agent-mcp menubar install in Terminal or enable it in the admin page."
         alert.addButton(withTitle: "Remove Shortcut")
         alert.addButton(withTitle: "Cancel")
         alert.alertStyle = .warning
@@ -208,7 +223,7 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     private func checkAdmin(completion: @escaping (Bool) -> Void) {
-        guard let url = URL(string: "\(config.adminUrl)/api/status") else {
+        guard let url = URL(string: "\(config.adminUrl)/api/health") else {
             completion(false)
             return
         }
@@ -219,12 +234,9 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async {
                 guard let self else { return }
                 self.adminReachable = reachable
-                let owned = self.adminProcess?.isRunning == true
-                self.statusMenuItem.title = reachable
-                    ? owned ? "Admin console running" : "Admin console running separately"
-                    : "Admin console stopped"
+                self.statusMenuItem.title = reachable ? "Admin console running" : "Admin console stopped"
                 self.startMenuItem.isEnabled = !reachable
-                self.stopMenuItem.isEnabled = reachable && owned
+                self.stopMenuItem.isEnabled = reachable
                 completion(reachable)
             }
         }.resume()

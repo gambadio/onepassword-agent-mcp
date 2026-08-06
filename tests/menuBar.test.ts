@@ -16,6 +16,10 @@ test("menu-bar status item has an identifiable 1Password label", async () => {
   assert.match(source, /button\.title = "1P"/);
   assert.match(source, /application\.delegate = delegate/);
   assert.match(source, /application\.run\(\)/);
+  assert.match(source, /menu\.autoenablesItems = false/);
+  assert.match(source, /self\.runCli\(\["admin", "stop"\], wait: true\)/);
+  assert.match(source, /self\.stopMenuItem\.isEnabled = reachable/);
+  assert.match(source, /\/api\/health/);
 });
 
 test("launch-at-login plist opens only the explicit user app path", () => {

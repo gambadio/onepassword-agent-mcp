@@ -196,6 +196,8 @@ No. Installing 1Password Agent MCP adds local commands and lets MCP clients laun
 - The optional Mac menu-bar app is installed only when you choose it and is visible while running. It starts the admin console only when you ask.
 - Restarting the computer does not auto-start this project unless you separately enabled **Launch Menu Bar at Login** or an MCP client starts it.
 
+If the **1P** menu item is closed, run `onepassword-agent-mcp menubar launch`. If you removed it, run `onepassword-agent-mcp menubar install`. The menu's **Stop Admin Console** action and `onepassword-agent-mcp admin stop` can stop the console even when it was originally started somewhere else.
+
 Run this any time:
 
 ```bash
