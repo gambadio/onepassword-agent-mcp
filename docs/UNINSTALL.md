@@ -22,16 +22,15 @@ onepassword-agent-mcp admin
 
 The MCP server is normally a child process of your MCP client. Close the client session, or remove the MCP client configuration below.
 
-Quit the optional menu-bar shortcut from its own menu, or run:
+Remove the optional menu-bar shortcut from its own menu, or run:
 
 ```bash
-onepassword-agent-mcp menubar quit
+onepassword-agent-mcp menubar uninstall --apply
 ```
 
-Closing or removing the shortcut does not prevent you from restoring it later:
+Removing the shortcut closes it and disables its login item. It does not prevent you from restoring it later:
 
 ```bash
-onepassword-agent-mcp menubar launch   # installed but closed
 onepassword-agent-mcp menubar install  # removed
 ```
 

@@ -20,6 +20,9 @@ test("menu-bar status item has an identifiable 1Password label", async () => {
   assert.match(source, /self\.runCli\(\["admin", "stop"\], wait: true\)/);
   assert.match(source, /self\.stopMenuItem\.isEnabled = reachable/);
   assert.match(source, /\/api\/health/);
+  assert.doesNotMatch(source, /Start Admin Console/);
+  assert.doesNotMatch(source, /Quit Menu Bar/);
+  assert.doesNotMatch(source, /startMenuItem/);
 });
 
 test("launch-at-login plist opens only the explicit user app path", () => {

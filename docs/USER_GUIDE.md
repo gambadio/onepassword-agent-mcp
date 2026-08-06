@@ -206,7 +206,7 @@ onepassword-agent-mcp runtime
 
 ## Optional Mac Menu Bar
 
-Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the clearly labeled **1P** menu item. From that item you can open, start, or stop the admin console, change launch at login, remove the shortcut, or quit it.
+Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the clearly labeled **1P** menu item. **Open Admin Console** starts the console when needed and opens it. The same menu can stop the console, change launch at login, or remove the shortcut without changing MCP configuration or 1Password data.
 
 The app is compiled locally from readable Swift source. It lives in your user `Applications` folder, requires no administrator password, and can be removed without deleting approvals or anything in 1Password.
 

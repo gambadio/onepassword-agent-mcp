@@ -287,7 +287,7 @@ function printRuntimeInfo(): void {
   console.log("Stop:");
   console.log("  Admin console: press Ctrl-C in the terminal running onepassword-agent-mcp admin.");
   console.log("  MCP server: close the MCP client session that launched it.");
-  console.log("  Menu bar: choose Quit Menu Bar, or run onepassword-agent-mcp menubar quit.");
+  console.log("  Menu bar: choose Remove Menu Bar Shortcut, or run onepassword-agent-mcp menubar uninstall --apply.");
   console.log("");
   console.log("Uninstall:");
   console.log("  onepassword-agent-mcp uninstall all");
@@ -619,7 +619,7 @@ Usage:
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
   onepassword-agent-mcp setup [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic] [--apply]
-  onepassword-agent-mcp menubar [status|install|launch|quit|login|uninstall]
+  onepassword-agent-mcp menubar [status|install|launch|login|uninstall]
   onepassword-agent-mcp uninstall [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic|menubar|state] [--apply]
 
 Commands:
@@ -650,7 +650,6 @@ Menu-bar examples (macOS only):
   onepassword-agent-mcp menubar install
   onepassword-agent-mcp menubar install --launch-at-login
   onepassword-agent-mcp menubar login off
-  onepassword-agent-mcp menubar quit
   onepassword-agent-mcp menubar uninstall
   onepassword-agent-mcp menubar uninstall --apply
 

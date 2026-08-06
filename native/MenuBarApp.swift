@@ -25,7 +25,6 @@ private enum Main {
 final class MenuBarApp: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var statusMenuItem: NSMenuItem!
-    private var startMenuItem: NSMenuItem!
     private var stopMenuItem: NSMenuItem!
     private var launchAtLoginMenuItem: NSMenuItem!
     private var adminProcess: Process?
@@ -75,10 +74,6 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         openItem.target = self
         menu.addItem(openItem)
 
-        startMenuItem = NSMenuItem(title: "Start Admin Console", action: #selector(startAdmin), keyEquivalent: "")
-        startMenuItem.target = self
-        menu.addItem(startMenuItem)
-
         stopMenuItem = NSMenuItem(title: "Stop Admin Console", action: #selector(stopAdmin), keyEquivalent: "")
         stopMenuItem.target = self
         menu.addItem(stopMenuItem)
@@ -91,11 +86,6 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         let removeItem = NSMenuItem(title: "Remove Menu Bar Shortcut...", action: #selector(removeShortcut), keyEquivalent: "")
         removeItem.target = self
         menu.addItem(removeItem)
-
-        menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit Menu Bar", action: #selector(quitApp), keyEquivalent: "q")
-        quitItem.target = self
-        menu.addItem(quitItem)
         statusItem.menu = menu
         updateLaunchAtLoginState()
     }
@@ -107,15 +97,6 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
                 self.openAdminURL()
             } else {
                 self.startAdminProcess(openWhenReady: true)
-            }
-        }
-    }
-
-    @objc private func startAdmin() {
-        checkAdmin { [weak self] reachable in
-            guard let self else { return }
-            if !reachable {
-                self.startAdminProcess(openWhenReady: false)
             }
         }
     }
@@ -158,10 +139,6 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
         alert.alertStyle = .warning
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         _ = runCli(["menubar", "uninstall", "--apply"], wait: false)
-        NSApp.terminate(nil)
-    }
-
-    @objc private func quitApp() {
         NSApp.terminate(nil)
     }
 
@@ -235,7 +212,6 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
                 guard let self else { return }
                 self.adminReachable = reachable
                 self.statusMenuItem.title = reachable ? "Admin console running" : "Admin console stopped"
-                self.startMenuItem.isEnabled = !reachable
                 self.stopMenuItem.isEnabled = reachable
                 completion(reachable)
             }
