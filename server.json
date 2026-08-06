@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.gambadio/onepassword-agent-mcp",
-  "description": "Local, approval-based MCP access to a dedicated 1Password vault. Agents receive encrypted handles while secret values are resolved locally only for approved copy or paste actions.",
+  "description": "Local MCP access to approved 1Password fields without exposing plaintext secrets to AI agents.",
   "repository": {
     "url": "https://github.com/gambadio/onepassword-agent-mcp",
     "source": "github"
