@@ -39,10 +39,13 @@ onepassword-agent-mcp uninstall all --apply
 This removes:
 
 - Claude Code config with `claude mcp remove`.
+- The merged Claude Desktop entry.
 - Codex config with `codex mcp remove`.
+- The VS Code user MCP entry.
+- Xcode's isolated Codex and Claude Agent entries.
 - The optional menu-bar app and its launch-at-login item, if installed.
 
-For GitHub Copilot in VS Code, remove the server named `onepassword-agent-mcp` from VS Code's MCP configuration UI. If you used workspace config, remove the `onepassword-agent-mcp` block from `.vscode/mcp.json`.
+Raycast keeps MCP configuration in app-managed storage, so uninstall opens its **Manage Servers** screen. Remove `onepassword-agent-mcp` there. If you separately created a workspace-scoped `.vscode/mcp.json`, remove the package's block from that project file as well.
 
 To remove only the menu-bar shortcut:
 

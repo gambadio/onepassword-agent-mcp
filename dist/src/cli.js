@@ -1,17 +1,14 @@
 #!/usr/bin/env node
-import { spawnSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
 import { startAdmin } from "./admin.js";
+import { clientLabel, genericMcpServersConfig, isClientDetected, serverName, setupClient, setupPlan, setupTargets, uninstallClient, vscodeWorkspaceConfig, } from "./clientSetup.js";
 import { startMcp } from "./mcp.js";
 import { getMenuBarStatus, installMenuBar, launchMenuBar, quitMenuBar, setMenuBarLaunchAtLogin, uninstallMenuBar, } from "./menuBar.js";
 import { appHome, keyPath, policyPath } from "./paths.js";
 import { OpCli } from "./opCli.js";
 import { StateStore } from "./state.js";
-const serverName = "onepassword-agent-mcp";
-const mcpCommand = "onepassword-agent-mcp";
-const mcpArgs = ["mcp"];
 async function main(argv) {
     const [rawCommand = "help", ...rest] = argv;
     if (rawCommand === "-h" || rawCommand === "--help") {
@@ -126,11 +123,17 @@ function normalizeTarget(target) {
     const value = target.toLowerCase();
     if (value === "claude" || value === "claude-code" || value === "claude_code")
         return "claude-code";
+    if (value === "claude-desktop" || value === "claude_desktop" || value === "desktop")
+        return "claude-desktop";
     if (value === "openai" || value === "openai-codex" || value === "codex")
         return "codex";
     if (value === "github-copilot" || value === "copilot" || value === "vscode" || value === "vs-code") {
         return "copilot";
     }
+    if (value === "xcode" || value === "apple-xcode")
+        return "xcode";
+    if (value === "raycast" || value === "raycast-ai")
+        return "raycast";
     if (value === "json" || value === "generic" || value === "mcp")
         return "generic";
     if (value === "all")
@@ -272,18 +275,16 @@ async function guidedInstall() {
     }
     const prompt = createInterface({ input: process.stdin, output: process.stdout });
     try {
-        const detected = ["claude-code", "codex", "copilot"].filter((target) => {
-            return commandExists(targetSpec(target, "user").command);
-        });
+        const detected = setupTargets().filter(isClientDetected);
         if (detected.length) {
-            const labels = detected.map((target) => targetSpec(target, "user").label).join(", ");
+            const labels = detected.map(clientLabel).join(", ");
             if (await askYesNo(prompt, `Connect the detected MCP clients (${labels})?`, true)) {
                 for (const target of detected)
-                    applySetup(target, "user");
+                    printClientResult(setupClient(target, "user"));
             }
         }
         else {
-            warn("No supported MCP client CLI was detected. You can configure one later with onepassword-agent-mcp setup.");
+            warn("No supported MCP client was detected. You can configure one later with onepassword-agent-mcp setup.");
         }
         if (process.platform === "darwin" && await askYesNo(prompt, "Install the optional visible menu-bar shortcut for opening the admin console?", false)) {
             const launchAtLogin = await askYesNo(prompt, "Show that menu-bar shortcut automatically after login?", false);
@@ -373,7 +374,7 @@ async function askYesNo(prompt, question, defaultValue) {
     return answer === "y" || answer === "yes";
 }
 async function setup(target, args) {
-    const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
+    const targets = target === "all" ? setupTargets() : [target];
     if (args.json) {
         console.log(JSON.stringify(genericMcpServersConfig(), null, 2));
         return;
@@ -383,7 +384,7 @@ async function setup(target, args) {
         return;
     }
     for (const item of targets) {
-        applySetup(item, args.scope);
+        printClientResult(setupClient(item, args.scope));
     }
 }
 async function uninstall(target, args) {
@@ -395,7 +396,7 @@ async function uninstall(target, args) {
         await manageMenuBar({ ...args, positionals: ["uninstall"] });
         return;
     }
-    const targets = target === "all" ? ["claude-code", "codex", "copilot"] : [target];
+    const targets = target === "all" ? setupTargets() : [target];
     if (args.json || target === "generic") {
         printGenericUninstall();
         return;
@@ -410,7 +411,7 @@ async function uninstall(target, args) {
         return;
     }
     for (const item of targets) {
-        applyUninstall(item, args.scope);
+        printClientResult(uninstallClient(item, args.scope));
     }
     if (target === "all") {
         const file = await new StateStore().load();
@@ -431,32 +432,19 @@ async function uninstall(target, args) {
 }
 function printSetupPlan(targets, scope) {
     console.log("1Password Agent MCP setup\n");
-    console.log("This dry run does not modify client config. Add --apply to run supported CLI installers.\n");
+    console.log("This dry run does not modify client config. Add --apply to configure detected clients.\n");
     for (const target of targets) {
-        if (target === "claude-code") {
-            console.log("Claude Code");
-            console.log(`  ${formatCommand("claude", claudeArgs(scope))}`);
-            console.log("");
-        }
-        else if (target === "codex") {
-            console.log("Codex");
-            console.log(`  ${formatCommand("codex", codexArgs())}`);
-            console.log("");
-        }
-        else if (target === "copilot") {
-            console.log("GitHub Copilot in VS Code");
-            console.log(`  ${formatCommand("code", copilotArgs())}`);
-            console.log("");
+        console.log(`${clientLabel(target)}${isClientDetected(target) ? " (detected)" : " (not detected)"}`);
+        for (const line of setupPlan(target, scope))
+            console.log(indent(line, "  "));
+        if (target === "copilot") {
             console.log("  Workspace fallback: .vscode/mcp.json");
             console.log(indent(JSON.stringify(vscodeWorkspaceConfig(), null, 2), "  "));
-            console.log("");
         }
-        else if (target === "generic") {
-            console.log("Generic MCP client JSON");
-            console.log(JSON.stringify(genericMcpServersConfig(), null, 2));
-            console.log("");
-        }
+        console.log("");
     }
+    console.log("Only detected clients are changed. Existing JSON config files are backed up before a merge.");
+    console.log("Raycast keeps MCP settings in app-managed storage, so its official import screen requires one final confirmation.\n");
     console.log("After setup, run:");
     console.log("  onepassword-agent-mcp admin");
     console.log("  onepassword-agent-mcp doctor");
@@ -468,27 +456,19 @@ function printSetupPlan(targets, scope) {
 }
 function printUninstallPlan(targets, scope) {
     console.log("1Password Agent MCP uninstall\n");
-    console.log("This dry run does not modify client config. Add --apply to run supported CLI removers.\n");
+    console.log("This dry run does not modify client config. Add --apply to remove supported client entries.\n");
     for (const target of targets) {
-        if (target === "claude-code") {
-            console.log("Claude Code");
-            console.log(`  ${formatCommand("claude", claudeRemoveArgs(scope))}`);
-            console.log("");
-        }
-        else if (target === "codex") {
-            console.log("Codex");
-            console.log(`  ${formatCommand("codex", codexRemoveArgs())}`);
-            console.log("");
-        }
-        else if (target === "copilot") {
-            console.log("GitHub Copilot in VS Code");
-            console.log("  The VS Code CLI exposes --add-mcp, but no stable --remove-mcp flag was found.");
-            console.log(`  Remove the server named ${serverName} from VS Code's MCP configuration UI, or from .vscode/mcp.json if you used workspace config.`);
-            console.log("");
+        console.log(clientLabel(target));
+        if (target === "raycast") {
+            console.log("  Open Raycast's official Manage Servers screen and confirm removal.");
         }
         else if (target === "generic") {
-            printGenericUninstall();
+            console.log(`  Remove the ${serverName} server block from the client config.`);
         }
+        else {
+            console.log(`  Remove the ${serverName} entry from this client's user configuration.`);
+        }
+        console.log("");
     }
     console.log("Then uninstall the npm package:");
     console.log("  npm uninstall -g onepassword-agent-mcp");
@@ -502,62 +482,24 @@ function printGenericUninstall() {
     console.log(`  Remove the ${serverName} server block from your client's MCP config.`);
     console.log("");
 }
-function applySetup(target, scope) {
-    if (target === "generic") {
-        console.log(JSON.stringify(genericMcpServersConfig(), null, 2));
-        return;
-    }
-    const spec = targetSpec(target, scope);
-    if (!commandExists(spec.command)) {
-        warn(`${spec.label}: ${spec.command} was not found in PATH.`);
-        console.log(`    ${formatCommand(spec.command, spec.args)}`);
-        if (target === "copilot") {
-            console.log("    Or create .vscode/mcp.json with:");
-            console.log(indent(JSON.stringify(vscodeWorkspaceConfig(), null, 2), "    "));
-        }
-        return;
-    }
-    const result = spawnSync(spec.command, spec.args, { stdio: "inherit" });
-    if (result.error) {
-        fail(`${spec.label}: ${result.error.message}`);
+function printClientResult(result) {
+    const suffix = result.detail ? `: ${result.detail}` : "";
+    if (result.status === "failed") {
+        fail(`${result.label}${suffix}`);
         process.exitCode = 1;
-        return;
     }
-    if (typeof result.status === "number" && result.status !== 0) {
-        fail(`${spec.label}: installer exited with code ${result.status}`);
-        process.exitCode = result.status;
-        return;
+    else if (result.status === "not-detected") {
+        console.log(`SKIP ${result.label}: not detected`);
     }
-    ok(`${spec.label}: configured`);
-}
-function applyUninstall(target, scope) {
-    if (target === "generic") {
-        printGenericUninstall();
-        return;
+    else if (result.status === "needs-user-action") {
+        console.log(`NEXT ${result.label}${suffix}`);
     }
-    const spec = removeSpec(target, scope);
-    if (!spec) {
-        warn("GitHub Copilot in VS Code: automatic removal is not available through the detected code CLI.");
-        console.log(`    Remove the server named ${serverName} from VS Code's MCP configuration UI, or from .vscode/mcp.json if you used workspace config.`);
-        return;
+    else if (result.status === "unchanged") {
+        ok(`${result.label}: already configured${result.detail ? ` (${result.detail})` : ""}`);
     }
-    if (!commandExists(spec.command)) {
-        warn(`${spec.label}: ${spec.command} was not found in PATH.`);
-        console.log(`    ${formatCommand(spec.command, spec.args)}`);
-        return;
+    else {
+        ok(`${result.label}: ${result.status}${suffix}`);
     }
-    const result = spawnSync(spec.command, spec.args, { stdio: "inherit" });
-    if (result.error) {
-        fail(`${spec.label}: ${result.error.message}`);
-        process.exitCode = 1;
-        return;
-    }
-    if (typeof result.status === "number" && result.status !== 0) {
-        fail(`${spec.label}: remover exited with code ${result.status}`);
-        process.exitCode = result.status;
-        return;
-    }
-    ok(`${spec.label}: removed`);
 }
 async function uninstallState(args) {
     console.log("1Password Agent MCP local-state removal\n");
@@ -571,74 +513,6 @@ async function uninstallState(args) {
     }
     await rm(appHome(), { recursive: true, force: true });
     ok(`Removed local state directory: ${appHome()}`);
-}
-function targetSpec(target, scope) {
-    if (target === "claude-code")
-        return { label: "Claude Code", command: "claude", args: claudeArgs(scope) };
-    if (target === "codex")
-        return { label: "Codex", command: "codex", args: codexArgs() };
-    return { label: "GitHub Copilot in VS Code", command: "code", args: copilotArgs() };
-}
-function removeSpec(target, scope) {
-    if (target === "claude-code")
-        return { label: "Claude Code", command: "claude", args: claudeRemoveArgs(scope) };
-    if (target === "codex")
-        return { label: "Codex", command: "codex", args: codexRemoveArgs() };
-    return null;
-}
-function claudeArgs(scope) {
-    return ["mcp", "add", "--scope", scope, serverName, "--", mcpCommand, ...mcpArgs];
-}
-function codexArgs() {
-    return ["mcp", "add", serverName, "--", mcpCommand, ...mcpArgs];
-}
-function claudeRemoveArgs(scope) {
-    return ["mcp", "remove", "--scope", scope, serverName];
-}
-function codexRemoveArgs() {
-    return ["mcp", "remove", serverName];
-}
-function copilotArgs() {
-    return ["--add-mcp", JSON.stringify({
-            name: serverName,
-            command: mcpCommand,
-            args: mcpArgs,
-        })];
-}
-function vscodeWorkspaceConfig() {
-    return {
-        servers: {
-            [serverName]: {
-                type: "stdio",
-                command: mcpCommand,
-                args: mcpArgs,
-            },
-        },
-    };
-}
-function genericMcpServersConfig() {
-    return {
-        mcpServers: {
-            [serverName]: {
-                command: mcpCommand,
-                args: mcpArgs,
-            },
-        },
-    };
-}
-function commandExists(command) {
-    const lookup = process.platform === "win32"
-        ? spawnSync("where", [command], { stdio: "ignore" })
-        : spawnSync("sh", ["-lc", `command -v ${shellQuote(command)}`], { stdio: "ignore" });
-    return lookup.status === 0;
-}
-function formatCommand(command, args) {
-    return [command, ...args].map(shellQuote).join(" ");
-}
-function shellQuote(value) {
-    if (/^[A-Za-z0-9_./:=@+-]+$/.test(value))
-        return value;
-    return `'${value.replaceAll("'", "'\\''")}'`;
 }
 function indent(value, prefix) {
     return value.split("\n").map((line) => `${prefix}${line}`).join("\n");
@@ -661,9 +535,9 @@ Usage:
   onepassword-agent-mcp mcp
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
-  onepassword-agent-mcp setup [all|claude-code|codex|copilot|generic] [--apply]
+  onepassword-agent-mcp setup [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic] [--apply]
   onepassword-agent-mcp menubar [status|install|launch|quit|login|uninstall]
-  onepassword-agent-mcp uninstall [all|claude-code|codex|copilot|generic|menubar|state] [--apply]
+  onepassword-agent-mcp uninstall [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic|menubar|state] [--apply]
 
 Commands:
   install    Run the guided, interactive installer.
@@ -677,10 +551,10 @@ Commands:
 
 Setup examples:
   onepassword-agent-mcp setup all
+  onepassword-agent-mcp setup all --apply
   onepassword-agent-mcp setup claude-code --apply
-  onepassword-agent-mcp setup claude-code --apply --scope user
-  onepassword-agent-mcp setup codex --apply
-  onepassword-agent-mcp setup copilot --apply
+  onepassword-agent-mcp setup xcode --apply
+  onepassword-agent-mcp setup raycast --apply
   onepassword-agent-mcp setup generic --json
 
 Menu-bar examples (macOS only):

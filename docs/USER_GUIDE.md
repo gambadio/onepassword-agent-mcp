@@ -204,7 +204,7 @@ onepassword-agent-mcp runtime
 
 ## Optional Mac Menu Bar
 
-Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the shield-and-lock symbol. From that symbol you can open, start, or stop the admin console, change launch at login, remove the shortcut, or quit it.
+Use **Mac Menu Bar Shortcut** in the admin page to enable or remove the clearly labeled **1P** menu item. From that item you can open, start, or stop the admin console, change launch at login, remove the shortcut, or quit it.
 
 The app is compiled locally from readable Swift source. It lives in your user `Applications` folder, requires no administrator password, and can be removed without deleting approvals or anything in 1Password.
 

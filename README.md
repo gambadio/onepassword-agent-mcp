@@ -34,7 +34,7 @@ Install from npm:
 npm install -g onepassword-agent-mcp
 ```
 
-Run the friendly installer. It detects supported MCP clients and, on macOS, asks whether you want the optional visible menu-bar shortcut:
+Run the friendly installer. It detects supported MCP clients, shows what it found, and asks before changing their user configuration. On macOS it separately offers the optional visible menu-bar shortcut:
 
 ```bash
 onepassword-agent-mcp install
@@ -52,7 +52,7 @@ Prefer explicit commands? Check your setup and connect clients manually:
 onepassword-agent-mcp doctor
 ```
 
-Connect installed MCP clients:
+Connect every detected MCP client with one command:
 
 ```bash
 onepassword-agent-mcp setup all --apply
@@ -80,7 +80,7 @@ No. Installing the npm package itself adds commands only. It does not install a 
 
 - `onepassword-agent-mcp admin` runs the local approval console only while that terminal process is alive.
 - `onepassword-agent-mcp mcp` is a stdio MCP server. MCP clients such as Claude Code, Codex, or VS Code launch it as a child process when they need it.
-- `onepassword-agent-mcp setup ... --apply` only writes MCP client configuration.
+- `onepassword-agent-mcp setup ... --apply` only writes MCP client configuration. Existing JSON files are backed up before a merge.
 - The optional macOS menu-bar companion is installed only when you explicitly choose it. Its icon is visible whenever it is running.
 - Launch at login is a separate choice and is off by default. Even when enabled, the visible menu-bar app does not start the admin server until you choose **Open Admin Console**.
 - Restarting the computer does not auto-start this project unless you enabled the optional menu-bar login item or another app starts an MCP client that then launches the stdio server.
@@ -94,7 +94,7 @@ onepassword-agent-mcp runtime
 
 ## Optional Mac Menu Bar
 
-On macOS, the guided installer can add a small shield-and-lock symbol to the menu bar. You can also enable it later under **Mac Menu Bar Shortcut** in the local admin page.
+On macOS, the guided installer can add a clearly labeled **1P** item to the menu bar. You can also enable it later under **Mac Menu Bar Shortcut** in the local admin page.
 
 The companion is built locally from the readable Swift source in [`native/MenuBarApp.swift`](native/MenuBarApp.swift). No opaque app binary is shipped in the npm package. The app is placed at `~/Applications/1Password Agent MCP.app` and never asks for administrator access.
 
@@ -154,17 +154,21 @@ When agents are allowed to create new credentials, those items are saved into `M
 
 ## Client Setup
 
-The setup CLI prints a dry run by default:
+The setup CLI prints a dry run by default. It detects Claude Code, Claude Desktop, Codex, VS Code, Xcode coding agents, and Raycast AI when they are installed:
 
 ```bash
 onepassword-agent-mcp setup all
 ```
 
-Apply setup automatically where a supported CLI is installed:
+Apply setup to every detected client:
 
 ```bash
 onepassword-agent-mcp setup all --apply
 ```
+
+The command uses absolute executable paths so GUI apps do not depend on Terminal's `PATH`. Claude Desktop and VS Code JSON are merged with timestamped backups. Xcode's private Codex and Claude configuration folders are handled separately because Xcode does not use the normal CLI configuration.
+
+Raycast stores MCP configuration in app-managed storage and does not expose a supported external config writer. The CLI opens Raycast's official **Import Servers** screen; review the prepared entry and confirm it once in Raycast. This is the only interactive client-specific step.
 
 ### Claude Code
 
@@ -216,6 +220,34 @@ Workspace fallback at `.vscode/mcp.json`:
 }
 ```
 
+### Claude Desktop
+
+```bash
+onepassword-agent-mcp setup claude-desktop --apply
+```
+
+The CLI safely merges the server into Claude Desktop's user JSON and preserves all other settings.
+
+### Xcode
+
+```bash
+onepassword-agent-mcp setup xcode --apply
+```
+
+This configures the isolated Codex and Claude Agent environments used only inside Xcode.
+
+### Raycast AI
+
+```bash
+onepassword-agent-mcp setup raycast --apply
+```
+
+Raycast opens its native import screen for the final confirmation. Raycast asks before MCP tool calls by default.
+
+### ChatGPT Desktop
+
+ChatGPT Desktop is intentionally not included in local setup. ChatGPT currently connects to remote MCP servers rather than arbitrary local stdio commands. Do not expose this password bridge through a public tunnel merely to connect it.
+
 ### Other MCP Clients
 
 Print generic MCP JSON:
@@ -252,7 +284,7 @@ onepassword-agent-mcp uninstall all
 onepassword-agent-mcp uninstall all --apply
 ```
 
-The uninstall command removes Claude Code and Codex config entries where their CLIs are installed and removes the optional menu-bar app/login item if present. VS Code currently exposes an add command but no stable remove flag in its CLI, so the command prints the manual VS Code cleanup step for Copilot.
+The uninstall command removes its entries from Claude Code, Claude Desktop, Codex, VS Code, and Xcode where present, then removes the optional menu-bar app/login item. Raycast opens **Manage Servers** for an explicit removal because its settings are app-managed. Other client settings and all 1Password data remain untouched.
 
 Remove the global npm package:
 

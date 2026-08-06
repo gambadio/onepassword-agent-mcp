@@ -13,6 +13,15 @@ private struct MenuBarConfig: Decodable {
 }
 
 @main
+private enum Main {
+    static func main() {
+        let application = NSApplication.shared
+        let delegate = MenuBarApp()
+        application.delegate = delegate
+        application.run()
+    }
+}
+
 final class MenuBarApp: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var statusMenuItem: NSMenuItem!
@@ -43,11 +52,11 @@ final class MenuBarApp: NSObject, NSApplicationDelegate {
     }
 
     private func buildMenu() {
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+        statusItem = NSStatusBar.system.statusItem(withLength: 32)
         if let button = statusItem.button {
-            let image = NSImage(systemSymbolName: "lock.shield.fill", accessibilityDescription: "1Password Agent MCP")
-            image?.isTemplate = true
-            button.image = image
+            button.image = nil
+            button.title = "1P"
+            button.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .semibold)
             button.toolTip = "1Password Agent MCP"
         }
 

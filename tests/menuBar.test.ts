@@ -9,6 +9,15 @@ test("menu-bar app is a visible status item without a Dock icon", () => {
   assert.match(plist, /<key>CFBundleShortVersionString<\/key><string>0\.3\.0<\/string>/);
 });
 
+test("menu-bar status item has an identifiable 1Password label", async () => {
+  const source = await import("node:fs/promises").then((fs) => fs.readFile("native/MenuBarApp.swift", "utf8"));
+  assert.match(source, /statusItem\(withLength: 32\)/);
+  assert.match(source, /button\.image = nil/);
+  assert.match(source, /button\.title = "1P"/);
+  assert.match(source, /application\.delegate = delegate/);
+  assert.match(source, /application\.run\(\)/);
+});
+
 test("launch-at-login plist opens only the explicit user app path", () => {
   const plist = launchAgentPlist("/Users/example/Applications/1Password Agent MCP.app");
   assert.match(plist, /<string>\/usr\/bin\/open<\/string>/);

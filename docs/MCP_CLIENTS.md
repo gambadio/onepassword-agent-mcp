@@ -6,7 +6,14 @@
 onepassword-agent-mcp mcp
 ```
 
-The CLI can configure common clients for you.
+The CLI detects and configures common clients for you. Preview first, then apply:
+
+```bash
+onepassword-agent-mcp setup all
+onepassword-agent-mcp setup all --apply
+```
+
+The apply command uses an absolute path to the installed executable. Existing JSON configurations are merged rather than replaced and receive a timestamped backup before a change.
 
 ## Install 1Password Agent MCP
 
@@ -69,6 +76,34 @@ Workspace fallback at `.vscode/mcp.json`:
   }
 }
 ```
+
+## Claude Desktop
+
+```bash
+onepassword-agent-mcp setup claude-desktop --apply
+```
+
+The CLI merges `onepassword-agent-mcp` into Claude Desktop's user configuration without replacing other servers or settings.
+
+## Xcode Coding Agents
+
+```bash
+onepassword-agent-mcp setup xcode --apply
+```
+
+Xcode uses isolated agent homes under `~/Library/Developer/Xcode/CodingAssistant`. The command configures both Xcode's Codex environment and Claude Agent environment when those agents are installed.
+
+## Raycast AI
+
+```bash
+onepassword-agent-mcp setup raycast --apply
+```
+
+Raycast does not expose a supported external configuration writer. The command opens Raycast's official **Import Servers** screen with the entries prepared by the other client setup. Review and confirm the import in Raycast. Raycast asks for tool approval by default.
+
+## ChatGPT Desktop
+
+ChatGPT Desktop does not currently launch arbitrary local stdio MCP servers, so it is not a setup target. A remote tunnel would weaken the local-only boundary and is intentionally not created.
 
 ## Generic MCP JSON
 
@@ -167,4 +202,4 @@ Apply supported removers:
 onepassword-agent-mcp uninstall all --apply
 ```
 
-Claude Code and Codex have CLI removers. VS Code exposes `code --add-mcp`, but no stable `code --remove-mcp` flag was detected, so remove the server named `onepassword-agent-mcp` from VS Code's MCP configuration UI or from `.vscode/mcp.json` if you used workspace config.
+The command removes the package's entries from Claude Code, Claude Desktop, Codex, VS Code, and Xcode. Raycast opens its native **Manage Servers** screen for the final explicit removal. Workspace-scoped `.vscode/mcp.json` files remain project-owned and must be edited in that project.

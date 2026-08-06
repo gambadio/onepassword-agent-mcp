@@ -43,7 +43,7 @@ Run the guided installer:
 onepassword-agent-mcp install
 ```
 
-It asks before connecting detected MCP clients. On macOS it separately asks whether to install the visible menu-bar shortcut and whether that shortcut should appear after login. Both menu-bar choices are optional; launch at login defaults to off.
+It asks before connecting detected MCP clients. Detection covers Claude Code, Claude Desktop, Codex, VS Code, Xcode coding agents, and Raycast AI. On macOS it separately asks whether to install the visible **1P** menu-bar shortcut and whether that shortcut should appear after login. Both menu-bar choices are optional; launch at login defaults to off.
 
 Then run:
 
@@ -77,12 +77,17 @@ Apply setup for installed clients:
 onepassword-agent-mcp setup all --apply
 ```
 
+The command uses absolute executable paths so desktop apps work without Terminal's `PATH`. It creates timestamped backups before merging Claude Desktop, VS Code, or Xcode Claude JSON. Raycast opens its own import screen and asks you to confirm because Raycast keeps MCP settings in app-managed storage.
+
 Individual clients:
 
 ```bash
 onepassword-agent-mcp setup claude-code --apply
+onepassword-agent-mcp setup claude-desktop --apply
 onepassword-agent-mcp setup codex --apply
 onepassword-agent-mcp setup copilot --apply
+onepassword-agent-mcp setup xcode --apply
+onepassword-agent-mcp setup raycast --apply
 ```
 
 For unsupported clients, print generic MCP JSON:
@@ -200,7 +205,7 @@ onepassword-agent-mcp uninstall all
 onepassword-agent-mcp uninstall all --apply
 ```
 
-That also removes the optional menu-bar shortcut and login item if present. It does not delete 1Password data.
+That removes supported client entries and also removes the optional menu-bar shortcut and login item if present. Raycast opens **Manage Servers** for your final confirmation. It does not delete 1Password data.
 
 Remove the npm package:
 
