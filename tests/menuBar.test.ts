@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import test from "node:test";
 import { infoPlist, launchAgentPlist } from "../src/menuBar.js";
 
@@ -7,10 +8,21 @@ test("menu-bar app is a visible status item without a Dock icon", () => {
   assert.match(plist, /<key>LSUIElement<\/key><true\/>/);
   assert.match(plist, /io\.github\.gambadio\.onepassword-agent-mcp\.menubar/);
   assert.match(plist, /<key>CFBundleShortVersionString<\/key><string>0\.3\.0<\/string>/);
+  assert.match(plist, /<key>CFBundleIconFile<\/key><string>AppIcon\.icns<\/string>/);
+});
+
+test("menu-bar app ships and installs the branded macOS icon", async () => {
+  const [icon, source] = await Promise.all([
+    fs.stat("native/AppIcon.icns"),
+    fs.readFile("src/menuBar.ts", "utf8"),
+  ]);
+  assert.ok(icon.size > 10_000);
+  assert.match(source, /fs\.copyFile\(iconSource, path\.join\(resourcesDir, appIconName\)\)/);
+  assert.match(source, /registerMenuBarApp\(targetApp\)/);
 });
 
 test("menu-bar status item has an identifiable 1Password label", async () => {
-  const source = await import("node:fs/promises").then((fs) => fs.readFile("native/MenuBarApp.swift", "utf8"));
+  const source = await fs.readFile("native/MenuBarApp.swift", "utf8");
   assert.match(source, /statusItem\(withLength: 32\)/);
   assert.match(source, /button\.image = nil/);
   assert.match(source, /button\.title = "1P"/);

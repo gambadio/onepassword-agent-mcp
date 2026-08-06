@@ -10,6 +10,8 @@ import type { Settings } from "./types.js";
 const bundleId = "io.github.gambadio.onepassword-agent-mcp.menubar";
 const appName = "1Password Agent MCP.app";
 const executableName = "OnePasswordAgentMCPMenuBar";
+const appIconName = "AppIcon.icns";
+const launchServicesRegister = "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister";
 
 export interface MenuBarStatus {
   supported: boolean;
@@ -97,7 +99,9 @@ export async function installMenuBar(
   assertSafeAppPath(targetApp);
   const targetParent = path.dirname(targetApp);
   const source = path.join(packageRoot(), "native", "MenuBarApp.swift");
+  const iconSource = path.join(packageRoot(), "native", appIconName);
   if (!existsSync(source)) throw new Error(`Menu-bar source is missing: ${source}`);
+  if (!existsSync(iconSource)) throw new Error(`Menu-bar icon is missing: ${iconSource}`);
 
   const version = await readPackageVersion();
   const config: MenuBarConfig = {
@@ -123,6 +127,7 @@ export async function installMenuBar(
     await fs.mkdir(macOSDir, { recursive: true });
     await fs.mkdir(resourcesDir, { recursive: true });
     await fs.writeFile(path.join(builtApp, "Contents", "Info.plist"), infoPlist(version), "utf8");
+    await fs.copyFile(iconSource, path.join(resourcesDir, appIconName));
     await fs.writeFile(path.join(resourcesDir, "menu-bar.json"), `${JSON.stringify(config, null, 2)}\n`, {
       encoding: "utf8",
       mode: 0o600,
@@ -150,6 +155,7 @@ export async function installMenuBar(
       await fs.rm(targetApp, { recursive: true, force: true });
     }
     await fs.rename(builtApp, targetApp);
+    registerMenuBarApp(targetApp);
   } finally {
     await fs.rm(buildRoot, { recursive: true, force: true });
   }
@@ -228,6 +234,7 @@ export function infoPlist(version: string): string {
   <key>CFBundleDevelopmentRegion</key><string>en</string>
   <key>CFBundleDisplayName</key><string>1Password Agent MCP</string>
   <key>CFBundleExecutable</key><string>${executableName}</string>
+  <key>CFBundleIconFile</key><string>${appIconName}</string>
   <key>CFBundleIdentifier</key><string>${bundleId}</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>CFBundleName</key><string>1Password Agent MCP</string>
@@ -271,6 +278,11 @@ function adminUrl(settings: Pick<Settings, "adminHost" | "adminPort">): string {
 function hasSwiftCompiler(): boolean {
   const result = spawnSync("xcrun", ["--find", "swiftc"], { stdio: "ignore" });
   return result.status === 0;
+}
+
+function registerMenuBarApp(appPath: string): void {
+  if (!existsSync(launchServicesRegister)) return;
+  spawnSync(launchServicesRegister, ["-f", appPath], { stdio: "ignore" });
 }
 
 function isMenuBarRunning(): boolean {

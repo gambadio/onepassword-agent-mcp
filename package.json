@@ -1,6 +1,6 @@
 {
   "name": "onepassword-agent-mcp",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "description": "Local MCP server that lets agents paste approved 1Password secrets without receiving plaintext.",
   "mcpName": "io.github.gambadio/onepassword-agent-mcp",
   "type": "module",

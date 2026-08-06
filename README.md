@@ -96,7 +96,7 @@ onepassword-agent-mcp runtime
 
 On macOS, the guided installer can add a clearly labeled **1P** item to the menu bar. You can also enable it later under **Mac Menu Bar Shortcut** in the local admin page.
 
-The companion is built locally from the readable Swift source in [`native/MenuBarApp.swift`](native/MenuBarApp.swift). No opaque app binary is shipped in the npm package. The app is placed at `~/Applications/1Password Agent MCP.app` and never asks for administrator access.
+The companion is built locally from the readable Swift source in [`native/MenuBarApp.swift`](native/MenuBarApp.swift). No opaque app binary is shipped in the npm package. The generated app uses the project's teal shield logo, is placed at `~/Applications/1Password Agent MCP.app`, and never asks for administrator access.
 
 Manual controls:
 
