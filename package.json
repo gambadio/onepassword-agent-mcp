@@ -21,6 +21,7 @@
     "native",
     "public",
     "docs",
+    "scripts",
     "server.json",
     "README.md",
     "SECURITY.md",
@@ -53,8 +54,14 @@
     "start:mcp": "node dist/src/mcp.js",
     "setup": "node dist/src/cli.js setup",
     "doctor": "node dist/src/cli.js doctor",
+    "release:check": "node scripts/release-version.mjs check",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "preversion": "npm run typecheck && npm test",
+    "version": "node scripts/release-version.mjs sync && git add server.json",
     "prepack": "npm run build",
-    "prepublishOnly": "npm run typecheck && npm test",
+    "prepublishOnly": "npm run release:check && npm run typecheck && npm test",
     "test": "node --test --test-concurrency=1 --import tsx tests/*.test.ts"
   },
   "dependencies": {

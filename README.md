@@ -430,6 +430,8 @@ npm run dev:admin
 npm run dev:mcp
 ```
 
+Maintainer releases are automated through GitHub Actions with short-lived OIDC credentials. See [docs/RELEASING.md](docs/RELEASING.md); local `npm publish` and repeated device authorization are not part of the release process.
+
 ## License
 
 MIT
