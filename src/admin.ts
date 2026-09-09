@@ -10,7 +10,7 @@ import {
   createAdminRuntimeRecord,
   writeAdminRuntime,
 } from "./adminRuntime.js";
-import { loadOrCreateKey, openJson } from "./cryptoBox.js";
+import { loadOrCreateKey, openJson, randomId } from "./cryptoBox.js";
 import {
   getMenuBarStatus,
   installMenuBar,
@@ -19,11 +19,13 @@ import {
   setMenuBarLaunchAtLogin,
   uninstallMenuBar,
 } from "./menuBar.js";
-import { OpCli } from "./opCli.js";
+import { ItemWriteError, OpCli, type VerifiedItem } from "./opCli.js";
 import { publicDir } from "./paths.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
-import type { CandidateGroup, CandidatePayload, OpVaultSummary, PolicyFile, ProfileKind } from "./types.js";
+import type { AuditEvent, CandidateGroup, CandidatePayload, OpVaultSummary, PolicyFile, ProfileKind } from "./types.js";
+
+import { runtimeInfo } from "./version.js";
 
 const store = new StateStore();
 const policyService = new PolicyService(store);
@@ -39,7 +41,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
 
   app.get("/api/health", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
-    res.json({ ok: true });
+    res.json({ ok: true, runtime: runtimeInfo });
   });
 
   if (options.shutdownToken && options.onShutdownRequested) {
@@ -73,7 +75,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
       const mcpVault = describeMcpVault(file, vaults);
       cli = {
         installed: true,
-        authenticated: vaults.length > 0,
+        authenticated: authError === null,
         version,
         vaults: vaults.map((vault) => ({ id: vault.id, name: vault.name, items: vault.items })),
         mcpVault,
@@ -88,6 +90,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
     }
     res.json({
       cli,
+      runtime: runtimeInfo,
       settings: file.settings,
       grants: publicGrants.length,
       enabledGrants: publicGrants.filter((grant) => grant.enabled).length,
@@ -312,6 +315,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
       throw new Error("1Password did not return enough vault information to transfer this item.");
     }
 
+    let copied: VerifiedItem | undefined;
     if (mode === "move") {
       await op.moveItemToVault({
         itemId: candidate.itemId,
@@ -319,7 +323,8 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
         destinationVault,
       });
     } else {
-      await op.copyItemToVault({
+      copied = await op.copyItemToVault({
+        requestId: optionalString(req.body.requestId),
         itemId: candidate.itemId,
         currentVault,
         destinationVault,
@@ -328,11 +333,11 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
       });
     }
 
-    await store.addAudit({
+    const auditRecorded = await recordTransferAudit({
       type: mode === "move" ? "item.moved" : "item.copied",
       message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.title} into ${file.settings.mcpVaultName}.`,
-    });
-    res.status(201).json({ ok: true, mode });
+    }, copied);
+    res.status(201).json({ ok: true, mode, auditRecorded, warnings: auditRecorded ? [] : ["Item verified; local audit recording failed."], itemId: copied?.id, vaultId: copied?.vault?.id, verified: copied?.verified, operationId: copied?.operationId });
   });
 
   app.post("/api/op/mcp-vault/items/delete", async (req, res) => {
@@ -401,6 +406,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
       throw new Error("1Password did not return enough vault information to transfer this item.");
     }
 
+    let copied: VerifiedItem | undefined;
     if (mode === "move") {
       await op.moveItemToVault({
         itemId: candidate.itemId,
@@ -408,7 +414,8 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
         destinationVault,
       });
     } else {
-      await op.copyItemToVault({
+      copied = await op.copyItemToVault({
+        requestId: optionalString(req.body.requestId),
         itemId: candidate.itemId,
         currentVault,
         destinationVault,
@@ -421,11 +428,11 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
     if (mode === "move") {
       deletedGrants = await policyService.deleteGrantsForItem(candidate.itemId, candidate.vaultId, candidate.vaultName);
     }
-    await store.addAudit({
+    const auditRecorded = await recordTransferAudit({
       type: mode === "move" ? "item.moved" : "item.copied",
       message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} from ${file.settings.mcpVaultName} to ${destination.name || destination.id}.`,
-    });
-    res.status(201).json({ ok: true, mode, destination, deletedGrants });
+    }, copied);
+    res.status(201).json({ ok: true, mode, auditRecorded, warnings: auditRecorded ? [] : ["Item verified; local audit recording failed."], destination, deletedGrants, itemId: copied?.id, vaultId: copied?.vault?.id, verified: copied?.verified, operationId: copied?.operationId });
   });
 
   app.use(express.static(publicDir()));
@@ -434,10 +441,25 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
   });
 
   app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ ok: false, error: error.message, ...(error instanceof ItemWriteError ? error.outcome : {}) });
   });
 
   return app;
+}
+
+async function recordTransferAudit(event: Omit<AuditEvent, "id" | "createdAt">, copied?: VerifiedItem): Promise<boolean> {
+  if (!copied) { await store.addAudit(event); return true; }
+  try {
+    await store.update((state) => {
+      const operation = state.operations?.find((entry) => entry.id === copied.operationId);
+      if (!operation) throw new Error("Missing copy operation record.");
+      if (operation.auditRecorded) return;
+      state.audit.unshift({ ...event, id: randomId("audit"), createdAt: new Date().toISOString() });
+      state.audit = state.audit.slice(0, 200);
+      operation.auditRecorded = true;
+    });
+    return true;
+  } catch { return false; }
 }
 
 export async function startAdmin(): Promise<void> {

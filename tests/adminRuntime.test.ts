@@ -73,7 +73,7 @@ test("admin health is lightweight and shutdown requires the private token", asyn
 
   const health = await fetch(`${baseUrl}/api/health`);
   assert.equal(health.status, 200);
-  assert.deepEqual(await health.json(), { ok: true });
+  assert.equal((await health.json() as { ok: boolean }).ok, true);
 
   const rejected = await fetch(`${baseUrl}/api/runtime/stop`, { method: "POST" });
   assert.equal(rejected.status, 401);

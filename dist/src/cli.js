@@ -225,9 +225,10 @@ async function doctor() {
         fail(`1Password CLI: ${error.message}`);
         console.log("    Install it with: brew install 1password-cli");
     }
+    console.log(`INFO Agent creation permission: ${file.settings.allowAgentItemCreate ? "enabled" : "disabled (enable and save in Settings)"}`);
     const adminUrl = `http://${file.settings.adminHost}:${file.settings.adminPort}`;
     try {
-        const response = await fetch(`${adminUrl}/api/status`, { signal: AbortSignal.timeout(1_500) });
+        const response = await fetch(`${adminUrl}/api/health`, { signal: AbortSignal.timeout(1_500) });
         if (response.ok) {
             ok(`Admin UI: ${adminUrl}`);
         }
@@ -258,7 +259,7 @@ async function doctor() {
         process.exitCode = 1;
     }
     else {
-        console.log("Ready. Approve item fields in the admin UI, then connect an MCP client.");
+        console.log("CLI and local policy checks passed. The save transport is not tested by doctor. Approve item fields in the admin UI, then connect an MCP client.");
     }
 }
 function printRuntimeInfo() {

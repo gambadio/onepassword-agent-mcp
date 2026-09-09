@@ -34,6 +34,12 @@ const menuBarLoginToggle = document.querySelector("#menuBarLoginToggle");
 const menuBarLaunchBtn = document.querySelector("#menuBarLaunchBtn");
 const menuBarUpdateBtn = document.querySelector("#menuBarUpdateBtn");
 
+let sourceRequest = 0;
+let mcpRequest = 0;
+let refreshRequest = 0;
+let settingsDirty = false;
+let settingsRevision = 0;
+const settingsSaveState = document.querySelector("#settingsSaveState");
 let sourceSearchTimer;
 let mcpSearchTimer;
 let currentStatus;
@@ -66,6 +72,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 sourceSearchInput.addEventListener("input", () => {
+  sourceRequest += 1;
   window.clearTimeout(sourceSearchTimer);
   sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 350);
 });
@@ -74,6 +81,7 @@ sourceVaultSelect.addEventListener("change", () => {
 });
 sourceGroupSelect.addEventListener("change", () => runAction(loadSourceCandidates));
 mcpSearchInput.addEventListener("input", () => {
+  mcpRequest += 1;
   window.clearTimeout(mcpSearchTimer);
   mcpSearchTimer = window.setTimeout(() => runAction(loadMcpCandidates, { quiet: true }), 350);
 });
@@ -88,6 +96,11 @@ for (const button of secretGroupButtons) {
   });
 }
 settingsForm.addEventListener("submit", saveSettings);
+settingsForm.addEventListener("input", () => {
+  settingsDirty = true;
+  settingsRevision += 1;
+  settingsSaveState.textContent = "Unsaved changes. Choose Save Settings to apply them.";
+});
 manualForm.addEventListener("submit", addManualGrant);
 profileForm.addEventListener("submit", addProfileEntry);
 menuBarToggle.addEventListener("change", () => runAction(toggleMenuBar));
@@ -97,25 +110,29 @@ menuBarUpdateBtn.addEventListener("click", () => runAction(updateMenuBarShortcut
 
 await runAction(async () => {
   await refresh();
-  await loadMcpCandidates();
 }, { quiet: true });
 
 async function refresh() {
+  const request = ++refreshRequest;
+  sourceRequest += 1;
+  mcpRequest += 1;
   const [status, grants, profile, menuBar] = await Promise.all([
     api("/api/status"),
     api("/api/grants"),
     api("/api/profile"),
     api("/api/menubar"),
   ]);
+  if (request !== refreshRequest) return;
   currentStatus = status;
   currentGrants = grants || [];
   renderStatus(status);
-  renderSettings(status.settings);
+  if (!settingsDirty) renderSettings(status.settings);
   renderVaultOptions(status.cli?.vaults || [], status.settings.mcpVaultName);
   renderGrants(grants);
   renderProfile(profile);
   renderMenuBar(menuBar);
   renderAudit(status.audit);
+  await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
 }
 
 function renderStatus(status) {
@@ -124,9 +141,9 @@ function renderStatus(status) {
   const cliText = !cli.installed
     ? `1Password CLI unavailable: ${cli.error}`
     : cli.authenticated
-      ? `1Password CLI ${cli.version || ""} ready`
-      : `1Password CLI ${cli.version || ""} needs sign-in`;
-  statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed.`;
+      ? `1Password CLI ${cli.version || ""} authorized`
+      : `1Password CLI ${cli.version || ""} authorization failed: ${cli.authError || "unlock 1Password and refresh"}`;
+  statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed. Agent creation: ${status.settings.allowAgentItemCreate ? "enabled" : "disabled"}.`;
 
   mcpVaultNameLabel.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
   createVaultBtn.textContent = `Create ${mcpVault.name || "MCPVAULT"}`;
@@ -257,11 +274,11 @@ async function ensureMcpVault() {
   if (!ok) return;
   const result = await api("/api/op/mcp-vault", { method: "POST" });
   await refresh();
-  await loadMcpCandidates();
   setMessage(result.created ? `Created ${name}.` : `${name} already exists.`);
 }
 
 async function loadSourceCandidates() {
+  const request = ++sourceRequest;
   sourceCandidatesEl.innerHTML = "";
   sourceSummary.textContent = "";
   if (currentStatus?.cli?.authError) {
@@ -286,8 +303,16 @@ async function loadSourceCandidates() {
   const query = sourceSearchInput.value.trim();
   if (query) params.set("q", query);
 
-  const result = await api(`/api/op/candidates?${params}`);
-  renderSourceCandidates(result);
+  try {
+    const result = await api(`/api/op/candidates?${params}`);
+    if (request !== sourceRequest) return;
+    renderSourceCandidates(result);
+  } catch (error) {
+    if (request !== sourceRequest) return;
+    sourceCandidatesEl.innerHTML = "";
+    sourceCandidatesEl.append(empty("Could not load items. Unlock 1Password and refresh to retry."));
+    throw error;
+  }
 }
 
 function renderSourceCandidates(result) {
@@ -296,7 +321,7 @@ function renderSourceCandidates(result) {
   sourceCandidateMap = new Map();
   selectedCandidateId = "";
   sourceCandidatesEl.innerHTML = "";
-  sourceSummary.textContent = `${result.shown} shown of ${result.matched} ${groupLabel(result.activeGroup)} matches (${result.total} total in this vault).`;
+  sourceSummary.textContent = `${result.shown} shown of ${result.matched} ${groupLabel(result.activeGroup)} matches (${result.total} total in this vault).${candidateWarnings(result)}`;
   if (!candidates.length) {
     sourceCandidatesEl.append(empty(`No matching ${groupLabel(result.activeGroup)} items with usable fields found in this source vault.`));
     return;
@@ -457,6 +482,7 @@ function updateSourceAfterTransfer(candidate, mode) {
 }
 
 async function loadMcpCandidates() {
+  const request = ++mcpRequest;
   mcpCandidatesEl.innerHTML = "";
   mcpSummary.textContent = "";
   const mcpVault = currentStatus?.cli?.mcpVault;
@@ -480,8 +506,16 @@ async function loadMcpCandidates() {
   const query = mcpSearchInput.value.trim();
   if (query) params.set("q", query);
 
-  const result = await api(`/api/op/candidates?${params}`);
-  renderMcpCandidates(result);
+  try {
+    const result = await api(`/api/op/candidates?${params}`);
+    if (request !== mcpRequest) return;
+    renderMcpCandidates(result);
+  } catch (error) {
+    if (request !== mcpRequest) return;
+    mcpCandidatesEl.innerHTML = "";
+    mcpCandidatesEl.append(empty("Could not load items. Unlock 1Password and refresh to retry."));
+    throw error;
+  }
 }
 
 function renderMcpCandidates(result) {
@@ -489,7 +523,7 @@ function renderMcpCandidates(result) {
   const groups = groupCandidatesByItem(candidates);
   mcpCandidatesEl.innerHTML = "";
   renderSecretGroupCounts(result.groups || {});
-  mcpSummary.textContent = formatMcpSummary(result, groups);
+  mcpSummary.textContent = formatMcpSummary(result, groups) + candidateWarnings(result);
   if (!groups.length) {
     mcpCandidatesEl.append(empty(`No ${approvalGroupLabel(result.activeGroup)} items are ready to approve yet. Copy one from the left side first.`));
     return;
@@ -595,7 +629,6 @@ function renderMcpCandidates(result) {
         });
       }
       await refresh();
-      await loadMcpCandidates();
       setMessage(`Approved ${selected.length} detail${selected.length === 1 ? "" : "s"} from ${group.title} for ${sites.length ? sites.join(", ") : "all websites"}.`);
     }));
     node.querySelector(".deleteItemBtn").addEventListener("click", () => runAction(async () => {
@@ -607,7 +640,6 @@ function renderMcpCandidates(result) {
         body: JSON.stringify({ token: group.candidates[0].token }),
       });
       await refresh();
-      await loadMcpCandidates();
       setMessage(`Deleted ${group.title} from ${name}.`);
     }));
     mcpCandidatesEl.append(node);
@@ -958,7 +990,11 @@ async function updateMenuBarShortcut() {
 
 async function saveSettings(event) {
   event.preventDefault();
-  await runAction(async () => {
+  const revision = settingsRevision;
+  const button = settingsForm.querySelector("button[type='submit']");
+  button.disabled = true;
+  settingsSaveState.textContent = "Saving settings…";
+  try {
     await api("/api/settings", {
       method: "PUT",
       body: JSON.stringify({
@@ -970,10 +1006,18 @@ async function saveSettings(event) {
         allowAgentItemCreate: settingsForm.allowAgentItemCreate.checked,
       }),
     });
-    await refresh();
-    await loadMcpCandidates();
-    setMessage("Saved local settings.");
-  });
+    if (revision === settingsRevision) settingsDirty = false;
+    settingsSaveState.textContent = settingsDirty ? "Settings saved. New edits are still unsaved." : "Settings saved.";
+    try { await refresh(); }
+    catch { settingsSaveState.textContent = "Settings saved. Reload failed; use Refresh to retry." + (settingsDirty ? " New edits are still unsaved." : ""); }
+  } catch (error) {
+    settingsSaveState.textContent = `Settings were not saved: ${error.message}`;
+  } finally { button.disabled = false; }
+}
+
+function candidateWarnings(result) {
+  return (result.failedItems ? ` ${result.failedItems} item(s) could not be read; retry after checking CLI access.` : "") +
+    (result.limited ? " Item limit reached. Narrow the search or increase the limit." : "");
 }
 
 async function addProfileEntry(event) {

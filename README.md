@@ -435,3 +435,59 @@ Maintainer releases are automated through GitHub Actions with short-lived OIDC c
 ## License
 
 MIT
+
+### Save verification and retries
+
+`save_secret_item` reports `created`, `verified`, `itemId`, `vaultId`, and
+`operationId`. Success requires a readback that matches the intended title,
+category, destination, websites, and field values. Secret values are compared
+locally and are never included in the result. The optional `approvalStatus`
+is separate: an item can be saved and verified while its approval still needs
+review in the admin UI.
+
+Reuse the same `requestId` and input after an interrupted save. If omitted,
+identical item contents in the same destination are deduplicated. Supply a new
+`requestId` only to intentionally create another item. Recovery uses a unique
+`opmcp-…` item tag and a local operation record, never a title match. If a previous
+operation cannot be reconciled, the tool reports an unresolved result instead
+of silently creating another item. An approval revoked by the user is never
+reinstated by a save retry.
+
+On macOS and Linux, JSON crosses an OS pipe with no plaintext temporary files
+or secret values in command arguments. The runner preserves the terminal
+session for 1Password authorization and cleans up its child process group on
+timeout or cancellation. Copy reads and verifies supported JSON fields,
+including concealed values. Items containing attachments, documents, or
+passkeys must be copied using the 1Password app.
+
+Restart existing MCP clients and the admin console after updating so every
+writer uses the current policy locking and save verification code. Existing
+settings, approvals, and the encryption key are retained.
+
+### Regression and live testing
+
+```bash
+npm ci
+npm run typecheck
+npm test
+npx playwright install chromium
+npm run test:ui
+npm run build
+node scripts/test-live.mjs
+```
+
+The final command tests all five categories using real CLI dry runs. Unlock
+1Password and authorize CLI access when prompted. To additionally test actual
+MCP saves, exact readback, retry deduplication, and copy, run:
+
+```bash
+node scripts/test-live.mjs --create
+```
+
+This requires the saved agent-creation setting. It creates uniquely tagged
+synthetic fixtures in the configured agent vault, verifies them, then moves
+those exact fixtures to Recently Deleted. It uses isolated local policy state.
+If verification or cleanup fails, it prints the recovery state directory and
+retains it for inspection. `doctor` checks CLI authorization, destination
+visibility, local creation permission, and console liveness; it does not
+perform save/copy validation.

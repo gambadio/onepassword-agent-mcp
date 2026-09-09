@@ -281,6 +281,7 @@
               Allow agents to save new items into MCPVAULT
             </label>
             <button type="submit">Save Settings</button>
+              <p id="settingsSaveState" role="status" aria-live="polite">Changes apply after Save Settings.</p>
           </form>
         </details>
       </section>
@@ -345,7 +346,7 @@
         <div class="approvalBody" hidden>
           <div class="approvalNotice">
             <strong>Nothing is shared yet.</strong>
-            <span>Select the details below, then approve them. The agent still never sees the raw value until a local copy or paste happens.</span>
+            <span>Select the details below, then approve them. Copy and paste happen locally; the agent never receives the raw value.</span>
           </div>
           <label class="siteScope">
             Websites where agents may use this item

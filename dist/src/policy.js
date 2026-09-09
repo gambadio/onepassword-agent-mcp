@@ -75,7 +75,7 @@ export class PolicyService {
                 throw new Error(`Profile field not found: ${id}`);
             updated = {
                 ...entry,
-                ...patch,
+                ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
                 sites: patch.sites ?? entry.sites,
                 updatedAt: new Date().toISOString(),
             };
@@ -141,7 +141,7 @@ export class PolicyService {
                 throw new Error(`Grant not found: ${id}`);
             updated = {
                 ...grant,
-                ...patch,
+                ...Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)),
                 sites: patch.sites ?? grant.sites,
                 updatedAt: new Date().toISOString(),
             };
@@ -272,14 +272,13 @@ export class PolicyService {
         if (!input.secretRef.startsWith("op://")) {
             throw new Error("Secret reference must start with op://");
         }
-        const policy = await this.store.load();
-        if (!grantTargetsMcpVault(input, policy.settings.mcpVaultName, input.secretRef)) {
-            throw new Error(`Only items in ${policy.settings.mcpVaultName} can be approved for agents.`);
-        }
         const key = await loadOrCreateKey();
         const now = new Date().toISOString();
         let grant;
         await this.store.update((policy) => {
+            if (!grantTargetsMcpVault(input, policy.settings.mcpVaultName, input.secretRef)) {
+                throw new Error(`Only items in ${policy.settings.mcpVaultName} can be approved for agents.`);
+            }
             const existing = policy.grants.find((candidate) => {
                 if (candidate.kind !== input.kind)
                     return false;

@@ -111,6 +111,7 @@ export interface PolicyFile {
   grants: Grant[];
   profile: ProfileEntry[];
   audit: AuditEvent[];
+  operations?: SaveOperation[];
 }
 
 export interface SecretHandlePayload {
@@ -157,6 +158,9 @@ export interface Candidate {
 
 export interface CandidateSearchResult {
   items: Candidate[];
+  failedItems?: number;
+  loadedItems?: number;
+  limited?: boolean;
   total: number;
   matched: number;
   shown: number;
@@ -211,6 +215,9 @@ export interface OpItemField {
 
 export interface OpItemDetail extends OpItemSummary {
   fields?: OpItemField[];
+  sections?: Array<{ id: string; label?: string }>;
+  tags?: string[];
+  files?: unknown[];
 }
 
 export interface OpVaultSummary {
@@ -220,6 +227,7 @@ export interface OpVaultSummary {
 }
 
 export interface CreateSecretItemInput {
+  requestId?: string;
   vault: string;
   title: string;
   category: CreateSecretCategory;
@@ -234,4 +242,17 @@ export interface CreateSecretItemInput {
   verificationNumber?: string;
   expiry?: string;
   pin?: string;
+}
+
+export interface SaveOperation {
+  id: string;
+  fingerprint: string;
+  vaultId: string;
+  itemId?: string;
+  created: boolean | "unknown";
+  verified: boolean;
+  approvalStatus: "not_requested" | "pending" | "approved" | "failed";
+  approvalId?: string;
+  auditRecorded?: boolean;
+  startedAt: string;
 }

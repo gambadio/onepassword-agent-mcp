@@ -20,26 +20,25 @@ export async function loadOrCreateKey() {
     }
     await fs.mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
     const key = crypto.randomBytes(32);
+    const tmp = `${file}.${crypto.randomBytes(12).toString("hex")}.tmp`;
     try {
-        const handle = await fs.open(file, "wx", 0o600);
+        await fs.writeFile(tmp, key, { flag: "wx", mode: 0o600 });
         try {
-            await handle.writeFile(key);
+            // Publish a complete key atomically without replacing another process's key.
+            await fs.link(tmp, file);
+            return key;
         }
-        finally {
-            await handle.close();
+        catch (error) {
+            if (error.code !== "EEXIST")
+                throw error;
+            const existing = await fs.readFile(file);
+            if (existing.length !== 32)
+                throw new Error("Invalid local encryption key length; expected 32 bytes.");
+            return existing;
         }
-        await fs.chmod(file, 0o600).catch(() => undefined);
-        return key;
     }
-    catch (error) {
-        if (error.code !== "EEXIST") {
-            throw error;
-        }
-        const existing = await fs.readFile(file);
-        if (existing.length !== 32) {
-            throw new Error(`Invalid key length in ${file}; expected 32 bytes.`);
-        }
-        return existing;
+    finally {
+        await fs.rm(tmp, { force: true });
     }
 }
 export function sealJson(value, key) {

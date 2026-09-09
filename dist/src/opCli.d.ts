@@ -1,4 +1,5 @@
-import type { Candidate, CandidateGroup, CandidateMode, CandidateSearchResult, CreateSecretItemInput, OpItemDetail, OpVaultSummary, Settings } from "./types.js";
+import { type ProcessOptions } from "./processRunner.js";
+import type { Candidate, CandidateGroup, CandidateMode, CandidateSearchResult, CreateSecretItemInput, OpItemDetail, OpItemField, OpVaultSummary, Settings } from "./types.js";
 interface RunResult {
     stdout: string;
     stderr: string;
@@ -16,7 +17,8 @@ export declare class OpCli {
         destinationVault: string;
         category?: string;
         title?: string;
-    }): Promise<void>;
+        requestId?: string;
+    }): Promise<VerifiedItem>;
     moveItemToVault(input: {
         itemId: string;
         currentVault: string;
@@ -27,7 +29,8 @@ export declare class OpCli {
         vault: string;
     }): Promise<void>;
     readSecret(secretRef: string): Promise<string>;
-    createSecretItem(input: CreateSecretItemInput): Promise<OpItemDetail>;
+    createSecretItem(input: CreateSecretItemInput): Promise<VerifiedItem>;
+    private writeTemplate;
     listCandidates(options: {
         vault?: string;
         limit?: number;
@@ -36,15 +39,42 @@ export declare class OpCli {
         mode?: CandidateMode;
         group?: CandidateGroup;
     }): Promise<CandidateSearchResult>;
-    getItem(item: string, vault?: string): Promise<OpItemDetail>;
+    getItem(item: string, vault?: string, reveal?: boolean): Promise<OpItemDetail>;
     itemToCandidates(item: OpItemDetail, key: Buffer, fallbackVault?: string, mode?: CandidateMode): Candidate[];
     private mapWithConcurrency;
-    run(args: string[], options?: {
-        timeoutMs?: number;
-        input?: string;
-    }): Promise<RunResult>;
+    run(args: string[], options?: ProcessOptions): Promise<RunResult>;
     private withGlobalArgs;
-    private pipeOp;
     private opEnv;
 }
+export declare function createItemTemplate(input: CreateSecretItemInput): ItemTemplate;
+export interface ItemTemplate {
+    title: string;
+    category?: string;
+    fields: OpItemField[];
+    urls?: OpItemDetail["urls"];
+    sections?: OpItemDetail["sections"];
+    tags?: string[];
+}
+export interface VerifiedItem extends OpItemDetail {
+    operationId: string;
+    created: true;
+    verified: true;
+}
+export declare class ItemWriteError extends Error {
+    readonly outcome: {
+        operationId: string;
+        itemId?: string;
+        vaultId: string;
+        created: true | "unknown";
+        verified: false;
+    };
+    constructor(message: string, outcome: {
+        operationId: string;
+        itemId?: string;
+        vaultId: string;
+        created: true | "unknown";
+        verified: false;
+    });
+}
+export declare function verifyItemTemplate(saved: OpItemDetail, template: ItemTemplate, vault: string, itemId: string): void;
 export {};

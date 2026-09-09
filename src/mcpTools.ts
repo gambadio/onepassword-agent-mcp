@@ -1,10 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { loadOrCreateKey } from "./cryptoBox.js";
-import { OpCli } from "./opCli.js";
+import { createItemTemplate, ItemWriteError, OpCli, verifyItemTemplate } from "./opCli.js";
 import { clearClipboard, pasteFromClipboard, setClipboard } from "./paste.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
+import { runtimeInfo } from "./version.js";
+import { withFileLock } from "./fileLock.js";
+import { appHome } from "./paths.js";
+import path from "node:path";
 
 function textResponse(text: string) {
   return { content: [{ type: "text" as const, text }] };
@@ -17,7 +21,7 @@ function jsonResponse(value: unknown) {
 export function createMcpServer(): McpServer {
   const server = new McpServer({
     name: "onepassword-agent-mcp",
-    version: "0.2.12",
+    version: runtimeInfo.version,
   });
 
   const policy = new PolicyService();
@@ -61,6 +65,7 @@ export function createMcpServer(): McpServer {
         cli = { installed: false, authenticated: false, error: (error as Error).message };
       }
       return jsonResponse({
+        runtime: runtimeInfo,
         grants: grants.length,
         enabledGrants: grants.filter((grant) => grant.enabled).length,
         profileFields: file.profile.filter((entry) => entry.enabled).length,
@@ -263,7 +268,8 @@ export function createMcpServer(): McpServer {
       description:
         "Create a new item in the configured MCPVAULT. Use this when the user asks the agent to save a new password, API credential, secure note, or credit-card entry. Secret values are sent to the local 1Password CLI through stdin, not command arguments.",
       inputSchema: {
-        title: z.string().min(1),
+        title: z.string().trim().min(1),
+        requestId: z.string().min(1).max(200).optional().describe("Stable ID for this save. Reuse on retries; use a new ID only for an intentional new item. Identical input is deduplicated when omitted."),
         category: z.enum(["login", "password", "api_credential", "secure_note", "credit_card"]).default("login"),
         url: z.string().optional(),
         username: z.string().optional(),
@@ -296,47 +302,81 @@ export function createMcpServer(): McpServer {
         throw new Error(`Create ${file.settings.mcpVaultName} in the admin UI before agents save items.`);
       }
       const vault = mcpVault.id || mcpVault.name || file.settings.mcpVaultName;
-      const created = await op.createSecretItem({
-        vault,
-        title: input.title,
-        category: input.category,
-        url: input.url,
-        username: input.username,
-        password: input.password,
-        credential: input.credential,
-        hostname: input.hostname,
-        notes: input.notes,
-        cardholderName: input.cardholderName,
-        cardNumber: input.cardNumber,
-        verificationNumber: input.verificationNumber,
-        expiry: input.expiry,
-        pin: input.pin,
-      });
-      await store.addAudit({
-        type: "item.saved",
-        message: `Agent saved ${created.title || input.title} into ${file.settings.mcpVaultName}.`,
-      });
-
-      let approval = null;
+      const createInput = { ...input, vault };
+      const key = await loadOrCreateKey();
+      const template = createItemTemplate(createInput);
       if (input.approveForAgents) {
-        const key = await loadOrCreateKey();
-        const candidates = op.itemToCandidates(created, key, vault, "all");
-        const selected = selectCandidateToApprove(candidates, input.approveField);
-        if (!selected) throw new Error("The saved item does not have an approvable field.");
-        approval = await policy.createFromCandidate(selected.token, {
-          sites: input.allowedSites || [],
-          enabled: true,
-        });
+        const preview = op.itemToCandidates({ ...template, id: "preview", vault: { id: vault, name: file.settings.mcpVaultName } }, key, vault);
+        if (!selectCandidateToApprove(preview, input.approveField)) {
+          throw new Error("The requested approval selector does not match an approvable field. No item was created.");
+        }
+      }
+      let created;
+      try {
+        created = await op.createSecretItem(createInput);
+        verifyItemTemplate(created, template, vault, created.id);
+      } catch (error) {
+        const outcome = error instanceof ItemWriteError ? error.outcome : {
+          created: created?.id ? true : "unknown", verified: false, itemId: created?.id, vaultId: vault,
+        };
+        return { ...jsonResponse({ ok: false, ...outcome, approvalStatus: "not_attempted",
+          error: error instanceof ItemWriteError ? error.message : "The saved item could not be verified. Check its identity before retrying.",
+          note: "Retry with the same requestId and input to reconcile this operation. No secret values were returned." }), isError: true };
       }
 
+      let approvalStatus = input.approveForAgents ? "pending" : "not_requested";
+      let approvedField: string | undefined;
+      let auditRecorded = false;
+      const warnings: string[] = [];
+      try {
+        await withFileLock(path.join(appHome(), `approval-${created.operationId}`), async () => {
+          const operation = (await store.load()).operations?.find((entry) => entry.id === created.operationId);
+          if (!operation) throw new Error("Save operation record is missing.");
+          await store.update((state) => {
+            const saved = state.operations!.find((entry) => entry.id === created.operationId)!;
+            if (!saved.auditRecorded) {
+              state.audit.unshift({ id: `audit_${created.operationId}`, type: "item.saved",
+                createdAt: new Date().toISOString(), message: `Agent saved ${created.title} into ${file.settings.mcpVaultName}.` });
+              state.audit = state.audit.slice(0, 200);
+              saved.auditRecorded = true;
+            }
+          });
+          auditRecorded = true;
+          if (input.approveForAgents) {
+            // A retry must never recreate an approval that the user has since revoked.
+            if (operation.approvalStatus === "approved" || operation.approvalStatus === "pending") {
+              const grant = (await store.load()).grants.find((entry) => entry.id === operation.approvalId && entry.enabled);
+              approvalStatus = grant ? "approved" : "requires_review";
+              approvedField = grant?.fieldLabel;
+            } else {
+              const candidates = op.itemToCandidates(created, key, vault, "all");
+              const selected = selectCandidateToApprove(candidates, input.approveField);
+              if (!selected) throw new Error("The saved field could not be selected for approval.");
+              await store.update((state) => { state.operations!.find((entry) => entry.id === created.operationId)!.approvalStatus = "pending"; });
+              try {
+                const grant = await policy.createFromCandidate(selected.token, { sites: input.allowedSites || [], enabled: true });
+                approvalStatus = "approved";
+                approvedField = grant.fieldLabel;
+                await store.update((state) => { Object.assign(state.operations!.find((entry) => entry.id === created.operationId)!, {
+                  approvalStatus: "approved", approvalId: grant.id,
+                }); });
+              } catch {
+                approvalStatus = "requires_review";
+                warnings.push("Item saved and verified. Approval did not finish; review it in the admin UI.");
+              }
+            }
+          }
+        });
+      } catch {
+        if (input.approveForAgents && approvalStatus !== "approved") approvalStatus = "requires_review";
+        warnings.push("Item saved and verified. Local audit or approval recording did not finish; retry the same save to reconcile it.");
+      }
       return jsonResponse({
-        ok: true,
-        vault: file.settings.mcpVaultName,
-        title: created.title || input.title,
-        category: created.category || input.category,
-        approved: Boolean(approval),
-        approvedField: approval?.fieldLabel,
-        note: "Secret values were saved to 1Password and were not returned.",
+        ok: true, created: true, verified: true, itemId: created.id, vaultId: created.vault!.id,
+        operationId: created.operationId, vault: file.settings.mcpVaultName, title: created.title,
+        category: created.category, approved: approvalStatus === "approved", approvalStatus,
+        approvedField, auditRecorded, warnings,
+        note: "Secret values were saved, verified in 1Password, and were not returned.",
       });
     },
   );

@@ -1,5 +1,10 @@
-import { spawn } from "node:child_process";
-import { sealJson } from "./cryptoBox.js";
+import crypto from "node:crypto";
+import path from "node:path";
+import { runProcess } from "./processRunner.js";
+import { withFileLock } from "./fileLock.js";
+import { StateStore } from "./state.js";
+import { appHome } from "./paths.js";
+import { loadOrCreateKey, sealJson } from "./cryptoBox.js";
 import { formatSites } from "./siteMatch.js";
 export class OpCli {
     settings;
@@ -23,7 +28,7 @@ export class OpCli {
         }
     }
     async listVaults() {
-        const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 8_000 });
+        const result = await this.run(["vault", "list", "--format", "json"], { timeoutMs: 30_000 });
         return JSON.parse(result.stdout || "[]");
     }
     async createVault(name) {
@@ -46,39 +51,21 @@ export class OpCli {
         }
     }
     async copyItemToVault(input) {
-        const sourceArgs = [
-            "item",
-            "get",
-            input.itemId,
-            "--vault",
-            input.currentVault,
-            "--format",
-            "json",
-            "--reveal",
-        ];
-        const documentedCloneArgs = ["item", "create", "--vault", input.destinationVault, "-"];
-        try {
-            await this.pipeOp(sourceArgs, documentedCloneArgs, 90_000);
+        const source = await this.getItem(input.itemId, input.currentVault, true);
+        if (source.id !== input.itemId)
+            throw new Error("Source item identity could not be verified.");
+        if (source.files?.length || source.category === "DOCUMENT" || source.fields?.some((field) => /file|passkey/i.test(field.type || ""))) {
+            throw new Error("Items containing attachments, documents, or passkeys cannot be copied through JSON. Use the 1Password app.");
         }
-        catch (error) {
-            const message = error.message;
-            if (!input.category || !/category/i.test(message)) {
-                throw error;
-            }
-            const fallbackArgs = [
-                "item",
-                "create",
-                "--category",
-                createCategory(input.category),
-                "--vault",
-                input.destinationVault,
-            ];
-            if (input.title?.trim()) {
-                fallbackArgs.push("--title", input.title.trim());
-            }
-            fallbackArgs.push("-");
-            await this.pipeOp(sourceArgs, fallbackArgs, 90_000);
-        }
+        const template = {
+            title: source.title,
+            category: source.category,
+            fields: (source.fields || []).map(({ reference, ...field }) => field),
+            urls: source.urls,
+            sections: source.sections,
+            tags: source.tags?.filter((tag) => !tag.startsWith("opmcp-")),
+        };
+        return await this.writeTemplate(template, input.destinationVault, `copy:${input.currentVault}:${input.itemId}:${input.requestId || "default"}`);
     }
     async moveItemToVault(input) {
         await this.run([
@@ -105,18 +92,66 @@ export class OpCli {
         return result.stdout;
     }
     async createSecretItem(input) {
-        const template = createItemTemplate(input);
-        const result = await this.run(["item", "create", "--vault", input.vault, "-"], { timeoutMs: 60_000, input: JSON.stringify(template) });
-        const created = JSON.parse(result.stdout || "{}");
-        if (created.id) {
-            return await this.getItem(created.id, input.vault);
-        }
-        return {
-            ...created,
-            title: created.title || input.title,
-            category: created.category || String(template.category || input.category),
-            vault: created.vault || { name: input.vault },
-        };
+        return await this.writeTemplate(createItemTemplate(input), input.vault, input.requestId);
+    }
+    async writeTemplate(template, vault, requestId) {
+        const key = await loadOrCreateKey();
+        const digest = (value) => crypto.createHmac("sha256", key).update(JSON.stringify(value)).digest("hex");
+        const fingerprint = digest(template);
+        const id = digest({ account: this.settings.account, vault, request: requestId || fingerprint });
+        const store = new StateStore();
+        const tag = `opmcp-${id}`;
+        return await withFileLock(path.join(appHome(), `operation-${id}`), async (assertOwned) => {
+            let operation = (await store.load()).operations?.find((entry) => entry.id === id);
+            if (operation && operation.fingerprint !== fingerprint) {
+                throw new Error("This requestId was already used with different item contents. Use the original input to reconcile it.");
+            }
+            const existing = Boolean(operation);
+            if (!operation) {
+                operation = { id, fingerprint, vaultId: vault, created: "unknown", verified: false,
+                    approvalStatus: "not_requested", startedAt: new Date().toISOString() };
+                const pending = operation;
+                await store.update((file) => { (file.operations ||= []).push(pending); });
+            }
+            const current = operation;
+            try {
+                if (!current.itemId && existing) {
+                    const result = await this.run(["item", "list", "--vault", vault, "--tags", tag, "--format", "json"]);
+                    const matches = parseJson(result.stdout);
+                    if (!Array.isArray(matches) || matches.length !== 1 || !matches[0]?.id) {
+                        throw new Error("The previous save is unresolved. Check its operation tag in 1Password before retrying with a new requestId.");
+                    }
+                    current.itemId = matches[0].id;
+                    current.created = true;
+                }
+                if (!current.itemId) {
+                    assertOwned();
+                    const result = await this.run(["item", "create", "--vault", vault, "-"], {
+                        timeoutMs: 60_000, input: JSON.stringify({ ...template, tags: [...(template.tags || []), tag] }),
+                    });
+                    const created = parseJson(result.stdout);
+                    if (!created || typeof created.id !== "string" || !created.id.trim()) {
+                        throw new Error("The CLI did not return a created item ID; save status is unknown.");
+                    }
+                    current.itemId = created.id;
+                    current.created = true;
+                }
+                await store.update((file) => {
+                    Object.assign(file.operations.find((entry) => entry.id === id), { itemId: current.itemId, created: true });
+                });
+                const saved = await this.getItem(current.itemId, vault, true);
+                verifyItemTemplate(saved, template, vault, current.itemId);
+                assertOwned();
+                await store.update((file) => { file.operations.find((entry) => entry.id === id).verified = true; });
+                return { ...saved, operationId: id, created: true, verified: true };
+            }
+            catch (error) {
+                throw new ItemWriteError(error.message, {
+                    operationId: id, itemId: current.itemId, vaultId: vault,
+                    created: current.itemId ? true : "unknown", verified: false,
+                });
+            }
+        });
     }
     async listCandidates(options) {
         const vault = options.vault || this.settings.defaultVault;
@@ -137,10 +172,22 @@ export class OpCli {
         const matchedItems = query ? items.filter((item) => itemMatchesQuery(item, query)) : items;
         const groups = countGroups(matchedItems);
         const groupedItems = group === "all" ? matchedItems : matchedItems.filter((item) => itemGroup(item) === group);
-        const details = await this.mapWithConcurrency(groupedItems.slice(0, limit), 6, async (item) => await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault));
-        const candidates = details.flatMap((item) => this.itemToCandidates(item, options.key, vault, options.mode || "all")).slice(0, limit);
+        let failedItems = 0;
+        const details = await this.mapWithConcurrency(groupedItems.slice(0, limit), 6, async (item) => {
+            try {
+                return await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault);
+            }
+            catch {
+                failedItems += 1;
+                return null;
+            }
+        });
+        const candidates = details.filter((item) => item !== null).flatMap((item) => this.itemToCandidates(item, options.key, vault, options.mode || "all"));
         return {
             items: candidates,
+            failedItems,
+            loadedItems: details.length - failedItems,
+            limited: groupedItems.length > limit,
             total: items.length,
             matched: groupedItems.length,
             shown: candidates.length,
@@ -149,12 +196,14 @@ export class OpCli {
             groups,
         };
     }
-    async getItem(item, vault) {
+    async getItem(item, vault, reveal = false) {
         const args = ["item", "get", item, "--format", "json"];
         if (vault)
             args.push("--vault", vault);
+        if (reveal)
+            args.push("--reveal");
         const result = await this.run(args, { timeoutMs: 45_000 });
-        return JSON.parse(result.stdout || "{}");
+        return parseJson(result.stdout);
     }
     itemToCandidates(item, key, fallbackVault, mode = "all") {
         const vaultId = item.vault?.id;
@@ -174,7 +223,7 @@ export class OpCli {
             const payload = {
                 secretRef,
                 title,
-                username: field.purpose === "USERNAME" ? undefined : findUsername(item),
+                username: normalizeField(field.purpose) === "username" ? undefined : findUsername(item),
                 vaultId,
                 vaultName,
                 itemId: item.id,
@@ -220,54 +269,8 @@ export class OpCli {
         return results;
     }
     async run(args, options = {}) {
-        const finalArgs = this.withGlobalArgs(args);
-        const child = spawn(this.settings.opPath || "op", finalArgs, {
-            stdio: ["pipe", "pipe", "pipe"],
-            env: this.opEnv(),
-        });
-        if (options.input) {
-            child.stdin.write(options.input);
-        }
-        child.stdin.end();
-        let stdout = "";
-        let stderr = "";
-        child.stdout.setEncoding("utf8");
-        child.stderr.setEncoding("utf8");
-        child.stdout.on("data", (chunk) => {
-            stdout += chunk;
-        });
-        child.stderr.on("data", (chunk) => {
-            stderr += chunk;
-        });
-        let timedOut = false;
-        let killTimer;
-        const timeout = setTimeout(() => {
-            timedOut = true;
-            child.kill("SIGTERM");
-            killTimer = setTimeout(() => child.kill("SIGKILL"), 1_000);
-        }, options.timeoutMs || 30_000);
-        return await new Promise((resolve, reject) => {
-            child.on("error", (error) => {
-                clearTimeout(timeout);
-                if (killTimer)
-                    clearTimeout(killTimer);
-                reject(new Error(`Unable to run 1Password CLI at "${this.settings.opPath}": ${error.message}`));
-            });
-            child.on("close", (code, signal) => {
-                clearTimeout(timeout);
-                if (killTimer)
-                    clearTimeout(killTimer);
-                if (timedOut) {
-                    reject(new Error("1Password CLI timed out. Open and unlock 1Password, then approve CLI access if prompted."));
-                    return;
-                }
-                if (code === 0) {
-                    resolve({ stdout, stderr });
-                    return;
-                }
-                const detail = stderr.trim() || stdout.trim() || `signal ${signal || "unknown"}`;
-                reject(new Error(`1Password CLI failed (${code ?? "no code"}): ${detail}`));
-            });
+        return await runProcess(this.settings.opPath || "op", this.withGlobalArgs(args), {
+            ...options, osPipe: true, env: this.opEnv(),
         });
     }
     withGlobalArgs(args) {
@@ -277,37 +280,6 @@ export class OpCli {
             return args;
         return ["--account", this.settings.account, ...args];
     }
-    async pipeOp(sourceArgs, destinationArgs, timeoutMs) {
-        const source = spawn(this.settings.opPath || "op", this.withGlobalArgs(sourceArgs), {
-            stdio: ["ignore", "pipe", "pipe"],
-            env: this.opEnv(),
-        });
-        const destination = spawn(this.settings.opPath || "op", this.withGlobalArgs(destinationArgs), {
-            stdio: ["pipe", "ignore", "pipe"],
-            env: this.opEnv(),
-        });
-        source.stdout.pipe(destination.stdin);
-        let sourceStderr = "";
-        let destinationStderr = "";
-        source.stderr.setEncoding("utf8");
-        destination.stderr.setEncoding("utf8");
-        source.stderr.on("data", (chunk) => {
-            sourceStderr += chunk;
-        });
-        destination.stderr.on("data", (chunk) => {
-            destinationStderr += chunk;
-        });
-        const timeout = setTimeout(() => {
-            source.kill("SIGTERM");
-            destination.kill("SIGTERM");
-        }, timeoutMs);
-        await Promise.all([
-            waitForChild(source, "1Password item read", () => sourceStderr),
-            waitForChild(destination, "1Password item create", () => destinationStderr),
-        ]).finally(() => {
-            clearTimeout(timeout);
-        });
-    }
     opEnv() {
         return {
             ...process.env,
@@ -315,21 +287,6 @@ export class OpCli {
             OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
         };
     }
-}
-function waitForChild(child, label, stderr) {
-    return new Promise((resolve, reject) => {
-        child.on("error", (error) => {
-            reject(new Error(`${label} failed to start: ${error.message}`));
-        });
-        child.on("close", (code, signal) => {
-            if (code === 0) {
-                resolve();
-                return;
-            }
-            const detail = stderr().trim() || `signal ${signal || "unknown"}`;
-            reject(new Error(`${label} failed (${code ?? "no code"}): ${detail}`));
-        });
-    });
 }
 function extractSites(item) {
     const raw = [
@@ -363,11 +320,11 @@ function classifyField(field, category) {
     const label = normalizeField(field.label);
     const type = normalizeField(field.type);
     const purpose = normalizeField(field.purpose);
-    if (purpose === "PASSWORD" || id === "password")
+    if (purpose === "password" || id === "password")
         return "password";
-    if (purpose === "USERNAME" || id === "username")
+    if (purpose === "username" || id === "username")
         return "username";
-    if (type === "OTP" || id.includes("otp") || label.includes("one-time"))
+    if (type === "otp" || id.includes("otp") || label.includes("one-time"))
         return "otp";
     if (category === "API_CREDENTIAL" && id === "credential")
         return "api_credential";
@@ -383,19 +340,19 @@ function classifyField(field, category) {
         return "credit_card_pin";
     if (category === "CREDIT_CARD" && id === "expiry")
         return "credit_card_expiry";
-    if (category === "SECURE_NOTE" && id === "notesPlain".toLowerCase())
+    if (category === "SECURE_NOTE" && id === "notesplain")
         return "secure_note";
-    if (type === "SSHKEY" || id === "private_key")
+    if (type === "sshkey" || id === "private_key")
         return "ssh_private_key";
     if (id.includes("license") || label.includes("license key"))
         return "license_key";
-    if (type === "CONCEALED" || type === "CREDIT_CARD_NUMBER")
+    if (type === "concealed" || type === "credit_card_number")
         return "custom";
     return null;
 }
 function findUsername(item) {
     const field = (item.fields || []).find((candidate) => {
-        return normalizeField(candidate.purpose) === "USERNAME" || normalizeField(candidate.id) === "username";
+        return normalizeField(candidate.purpose) === "username" || normalizeField(candidate.id) === "username";
     });
     const value = typeof field?.value === "string" ? field.value.trim() : "";
     return value || undefined;
@@ -443,38 +400,7 @@ function itemGroup(item) {
         return "note";
     return "other";
 }
-function createCategory(category) {
-    const normalized = normalizeCategory(category || "LOGIN");
-    const categories = {
-        LOGIN: "Login",
-        PASSWORD: "Password",
-        SECURE_NOTE: "Secure Note",
-        API_CREDENTIAL: "API Credential",
-        CREDIT_CARD: "Credit Card",
-        IDENTITY: "Identity",
-        DOCUMENT: "Document",
-        SOFTWARE_LICENSE: "Software License",
-        BANK_ACCOUNT: "Bank Account",
-        DATABASE: "Database",
-        DRIVER_LICENSE: "Driver License",
-        OUTDOOR_LICENSE: "Outdoor License",
-        MEMBERSHIP: "Membership",
-        PASSPORT: "Passport",
-        REWARD_PROGRAM: "Reward Program",
-        SOCIAL_SECURITY_NUMBER: "Social Security Number",
-        WIRELESS_ROUTER: "Wireless Router",
-        SERVER: "Server",
-        EMAIL_ACCOUNT: "Email Account",
-        MEDICAL_RECORD: "Medical Record",
-        SSH_KEY: "SSH Key",
-        CRYPTO_WALLET: "Crypto Wallet",
-    };
-    return categories[normalized] || normalized
-        .split("_")
-        .map((part) => part ? part[0].toUpperCase() + part.slice(1).toLowerCase() : part)
-        .join(" ");
-}
-function createItemTemplate(input) {
+export function createItemTemplate(input) {
     const category = templateCategory(input.category);
     const template = {
         title: input.title,
@@ -504,11 +430,12 @@ function createItemTemplate(input) {
         fields.push(field("notesPlain", "STRING", input.notes || input.credential || input.password || "", "notesPlain", "NOTES"));
     }
     else if (input.category === "credit_card") {
+        template.sections = [{ id: "details", label: "Additional Details" }];
         fields.push(field("notesPlain", "STRING", input.notes || "", "notesPlain", "NOTES"));
         fields.push(field("cardholder", "STRING", input.cardholderName || "", "cardholder name"));
         fields.push(field("ccnum", "CREDIT_CARD_NUMBER", input.cardNumber || "", "number"));
         fields.push(field("cvv", "CONCEALED", input.verificationNumber || "", "verification number"));
-        fields.push(field("expiry", "MONTH_YEAR", input.expiry || "", "expiry date"));
+        fields.push(field("expiry", "MONTH_YEAR", normalizeExpiry(input.expiry), "expiry date"));
         fields.push({
             ...field("pin", "CONCEALED", input.pin || "", "PIN"),
             section: { id: "details", label: "Additional Details" },
@@ -545,5 +472,58 @@ function normalizeCategory(value) {
 }
 function normalizeField(value) {
     return (value || "").trim().toLowerCase();
+}
+export class ItemWriteError extends Error {
+    outcome;
+    constructor(message, outcome) {
+        super(message);
+        this.outcome = outcome;
+        this.name = "ItemWriteError";
+    }
+}
+function parseJson(text) {
+    try {
+        return JSON.parse(text);
+    }
+    catch {
+        throw new Error("The CLI returned empty or malformed JSON; operation status could not be verified.");
+    }
+}
+export function verifyItemTemplate(saved, template, vault, itemId) {
+    if (!saved || !itemId || saved.id !== itemId || !saved.vault?.id ||
+        ![saved.vault.id, saved.vault.name].includes(vault)) {
+        throw new Error("Saved item or destination vault identity did not match.");
+    }
+    if (saved.title !== template.title || normalizeCategory(saved.category) !== normalizeCategory(template.category)) {
+        throw new Error("Saved title or category did not match the requested item.");
+    }
+    for (const expected of template.fields) {
+        const actual = saved.fields?.find((entry) => entry.id === expected.id &&
+            (entry.section?.id || "") === (expected.section?.id || ""));
+        // 1Password may omit empty optional fields. Nonempty values must survive exactly.
+        const expectedValue = String(expected.value ?? "");
+        if (!actual && !expectedValue)
+            continue;
+        if (!actual || !sameValue(expectedValue, String(actual.value ?? ""))) {
+            throw new Error("Saved field content did not match. The item exists but was not verified; do not create a replacement blindly.");
+        }
+    }
+    for (const expected of template.urls || []) {
+        if (!saved.urls?.some((entry) => entry.href === expected.href)) {
+            throw new Error("Saved website did not match the requested item.");
+        }
+    }
+}
+function sameValue(a, b) {
+    return crypto.timingSafeEqual(crypto.createHash("sha256").update(a).digest(), crypto.createHash("sha256").update(b).digest());
+}
+function normalizeExpiry(value) {
+    if (!value)
+        return "";
+    const normalized = value.replace(/[\/-]/g, "");
+    if (!/^\d{4}(0[1-9]|1[0-2])$/.test(normalized)) {
+        throw new Error("Credit-card expiry must be YYYY/MM or YYYYMM with a valid month.");
+    }
+    return normalized;
 }
 //# sourceMappingURL=opCli.js.map

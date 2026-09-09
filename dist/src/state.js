@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { withFileLock } from "./fileLock.js";
 import { appHome, policyPath } from "./paths.js";
 import { randomId } from "./cryptoBox.js";
 const DEFAULT_SETTINGS = {
@@ -15,6 +16,16 @@ const DEFAULT_SETTINGS = {
 };
 export class StateStore {
     async load() {
+        try {
+            return await this.read();
+        }
+        catch (error) {
+            if (error.code !== "ENOENT")
+                throw error;
+            return await this.update(() => { });
+        }
+    }
+    async read(initialize = false) {
         const file = policyPath();
         try {
             const raw = await fs.readFile(file, "utf8");
@@ -32,40 +43,57 @@ export class StateStore {
                 grants: parsed.grants || [],
                 profile: parsed.profile || [],
                 audit: parsed.audit || [],
+                operations: parsed.operations || [],
             };
         }
         catch (error) {
             if (error.code !== "ENOENT") {
                 throw error;
             }
+            if (!initialize)
+                throw error;
             const now = new Date().toISOString();
             const initial = {
                 version: 1,
                 createdAt: now,
                 updatedAt: now,
-                settings: DEFAULT_SETTINGS,
+                settings: { ...DEFAULT_SETTINGS },
                 grants: [],
                 profile: [],
                 audit: [],
+                operations: [],
             };
-            await this.save(initial);
             return initial;
         }
     }
-    async save(policy) {
+    async save(policy, assertOwned) {
         await fs.mkdir(appHome(), { recursive: true, mode: 0o700 });
         policy.updatedAt = new Date().toISOString();
         const file = policyPath();
-        const tmp = `${file}.${process.pid}.tmp`;
-        await fs.writeFile(tmp, `${JSON.stringify(policy, null, 2)}\n`, { mode: 0o600 });
-        await fs.rename(tmp, file);
-        await fs.chmod(file, 0o600).catch(() => undefined);
+        const tmp = `${file}.${randomId("write")}.tmp`;
+        try {
+            const handle = await fs.open(tmp, "wx", 0o600);
+            try {
+                await handle.writeFile(`${JSON.stringify(policy, null, 2)}\n`);
+                await handle.sync();
+            }
+            finally {
+                await handle.close();
+            }
+            assertOwned();
+            await fs.rename(tmp, file);
+        }
+        finally {
+            await fs.rm(tmp, { force: true });
+        }
     }
     async update(mutator) {
-        const policy = await this.load();
-        await mutator(policy);
-        await this.save(policy);
-        return policy;
+        return await withFileLock(policyPath(), async (assertOwned) => {
+            const policy = await this.read(true);
+            await mutator(policy);
+            await this.save(policy, assertOwned);
+            return policy;
+        });
     }
     async addAudit(event) {
         await this.update((policy) => {
@@ -76,18 +104,6 @@ export class StateStore {
             });
             policy.audit = policy.audit.slice(0, 200);
         });
-    }
-    async upsertGrant(grant) {
-        await this.update((policy) => {
-            const index = policy.grants.findIndex((item) => item.id === grant.id);
-            if (index >= 0) {
-                policy.grants[index] = grant;
-            }
-            else {
-                policy.grants.push(grant);
-            }
-        });
-        return grant;
     }
 }
 //# sourceMappingURL=state.js.map

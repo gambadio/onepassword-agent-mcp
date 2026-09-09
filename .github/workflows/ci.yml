@@ -34,6 +34,12 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Install test browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test admin UI
+        run: npm run test:ui
+
       - name: Build
         run: npm run build
 

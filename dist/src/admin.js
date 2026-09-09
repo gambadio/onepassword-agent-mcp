@@ -3,12 +3,13 @@ import express from "express";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { adminShutdownHeader, adminShutdownTokenMatches, clearAdminRuntime, createAdminRuntimeRecord, writeAdminRuntime, } from "./adminRuntime.js";
-import { loadOrCreateKey, openJson } from "./cryptoBox.js";
+import { loadOrCreateKey, openJson, randomId } from "./cryptoBox.js";
 import { getMenuBarStatus, installMenuBar, launchMenuBar, quitMenuBar, setMenuBarLaunchAtLogin, uninstallMenuBar, } from "./menuBar.js";
-import { OpCli } from "./opCli.js";
+import { ItemWriteError, OpCli } from "./opCli.js";
 import { publicDir } from "./paths.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
+import { runtimeInfo } from "./version.js";
 const store = new StateStore();
 const policyService = new PolicyService(store);
 export async function createAdminApp(options = {}) {
@@ -16,7 +17,7 @@ export async function createAdminApp(options = {}) {
     app.use(express.json({ limit: "1mb" }));
     app.get("/api/health", (_req, res) => {
         res.setHeader("Cache-Control", "no-store");
-        res.json({ ok: true });
+        res.json({ ok: true, runtime: runtimeInfo });
     });
     if (options.shutdownToken && options.onShutdownRequested) {
         app.post("/api/runtime/stop", (req, res) => {
@@ -48,7 +49,7 @@ export async function createAdminApp(options = {}) {
             const mcpVault = describeMcpVault(file, vaults);
             cli = {
                 installed: true,
-                authenticated: vaults.length > 0,
+                authenticated: authError === null,
                 version,
                 vaults: vaults.map((vault) => ({ id: vault.id, name: vault.name, items: vault.items })),
                 mcpVault,
@@ -64,6 +65,7 @@ export async function createAdminApp(options = {}) {
         }
         res.json({
             cli,
+            runtime: runtimeInfo,
             settings: file.settings,
             grants: publicGrants.length,
             enabledGrants: publicGrants.filter((grant) => grant.enabled).length,
@@ -262,6 +264,7 @@ export async function createAdminApp(options = {}) {
         if (!currentVault || !destinationVault) {
             throw new Error("1Password did not return enough vault information to transfer this item.");
         }
+        let copied;
         if (mode === "move") {
             await op.moveItemToVault({
                 itemId: candidate.itemId,
@@ -270,7 +273,8 @@ export async function createAdminApp(options = {}) {
             });
         }
         else {
-            await op.copyItemToVault({
+            copied = await op.copyItemToVault({
+                requestId: optionalString(req.body.requestId),
                 itemId: candidate.itemId,
                 currentVault,
                 destinationVault,
@@ -278,11 +282,11 @@ export async function createAdminApp(options = {}) {
                 title: candidate.itemTitle || candidate.title,
             });
         }
-        await store.addAudit({
+        const auditRecorded = await recordTransferAudit({
             type: mode === "move" ? "item.moved" : "item.copied",
             message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.title} into ${file.settings.mcpVaultName}.`,
-        });
-        res.status(201).json({ ok: true, mode });
+        }, copied);
+        res.status(201).json({ ok: true, mode, auditRecorded, warnings: auditRecorded ? [] : ["Item verified; local audit recording failed."], itemId: copied?.id, vaultId: copied?.vault?.id, verified: copied?.verified, operationId: copied?.operationId });
     });
     app.post("/api/op/mcp-vault/items/delete", async (req, res) => {
         const file = await store.load();
@@ -342,6 +346,7 @@ export async function createAdminApp(options = {}) {
         if (!currentVault || !destinationVault) {
             throw new Error("1Password did not return enough vault information to transfer this item.");
         }
+        let copied;
         if (mode === "move") {
             await op.moveItemToVault({
                 itemId: candidate.itemId,
@@ -350,7 +355,8 @@ export async function createAdminApp(options = {}) {
             });
         }
         else {
-            await op.copyItemToVault({
+            copied = await op.copyItemToVault({
+                requestId: optionalString(req.body.requestId),
                 itemId: candidate.itemId,
                 currentVault,
                 destinationVault,
@@ -362,20 +368,42 @@ export async function createAdminApp(options = {}) {
         if (mode === "move") {
             deletedGrants = await policyService.deleteGrantsForItem(candidate.itemId, candidate.vaultId, candidate.vaultName);
         }
-        await store.addAudit({
+        const auditRecorded = await recordTransferAudit({
             type: mode === "move" ? "item.moved" : "item.copied",
             message: `${mode === "move" ? "Moved" : "Copied"} ${candidate.itemTitle || candidate.title} from ${file.settings.mcpVaultName} to ${destination.name || destination.id}.`,
-        });
-        res.status(201).json({ ok: true, mode, destination, deletedGrants });
+        }, copied);
+        res.status(201).json({ ok: true, mode, auditRecorded, warnings: auditRecorded ? [] : ["Item verified; local audit recording failed."], destination, deletedGrants, itemId: copied?.id, vaultId: copied?.vault?.id, verified: copied?.verified, operationId: copied?.operationId });
     });
     app.use(express.static(publicDir()));
     app.get("/{*splat}", (_req, res) => {
         res.sendFile(path.join(publicDir(), "index.html"));
     });
     app.use((error, _req, res, _next) => {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({ ok: false, error: error.message, ...(error instanceof ItemWriteError ? error.outcome : {}) });
     });
     return app;
+}
+async function recordTransferAudit(event, copied) {
+    if (!copied) {
+        await store.addAudit(event);
+        return true;
+    }
+    try {
+        await store.update((state) => {
+            const operation = state.operations?.find((entry) => entry.id === copied.operationId);
+            if (!operation)
+                throw new Error("Missing copy operation record.");
+            if (operation.auditRecorded)
+                return;
+            state.audit.unshift({ ...event, id: randomId("audit"), createdAt: new Date().toISOString() });
+            state.audit = state.audit.slice(0, 200);
+            operation.auditRecorded = true;
+        });
+        return true;
+    }
+    catch {
+        return false;
+    }
 }
 export async function startAdmin() {
     const file = await store.load();

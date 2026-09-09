@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { runProcess } from "./processRunner.js";
 import os from "node:os";
 
 let clearTimer: NodeJS.Timeout | undefined;
@@ -58,19 +58,5 @@ function scheduleClipboardClear(clearAfterSeconds: number): void {
 }
 
 async function run(command: string, args: string[], input?: string): Promise<void> {
-  const child = spawn(command, args, { stdio: ["pipe", "ignore", "pipe"] });
-  if (input !== undefined) child.stdin.write(input);
-  child.stdin.end();
-  let stderr = "";
-  child.stderr.setEncoding("utf8");
-  child.stderr.on("data", (chunk) => {
-    stderr += chunk;
-  });
-  await new Promise<void>((resolve, reject) => {
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(stderr.trim() || `${command} exited with ${code}`));
-    });
-  });
+  await runProcess(command, args, { input, timeoutMs: 15_000 });
 }

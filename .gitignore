@@ -7,3 +7,5 @@ dist/*
 .firecrawl/
 data/
 *.log
+test-results/
+playwright-report/
