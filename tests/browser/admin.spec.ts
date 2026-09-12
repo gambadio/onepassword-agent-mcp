@@ -2,7 +2,7 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const defaults = { mcpVaultName: "MCPVAULT", opPath: "op", account: "", clipboardClearSeconds: 20, allowPasteWithoutSite: false, allowAgentItemCreate: false };
+const defaults = { mcpVaultName: "MCPVAULT", opPath: "op", account: "", clipboardClearSeconds: 20, allowPasteWithoutSite: false, allowAgentItemCreate: false, autoApproveAgentItems: false };
 const result = (query = "") => ({ items: [], total: 0, matched: 0, shown: 0, activeGroup: "all", groups: {}, query });
 
 async function setup(page: Page) {
@@ -97,5 +97,29 @@ test("Refresh preserves unsaved settings; saved settings remain saved if reload 
   await expect(page.locator("#settingsSaveState")).toContainText("Settings saved. Reload failed");
   expect(state.settings.allowAgentItemCreate).toBe(true);
   await expect(checkbox).toBeChecked();
+  expect(errors).toEqual([]);
+});
+
+test("auto approval can be enabled, reloaded, and disabled in settings", async ({ page }) => {
+  const { state, errors } = await setup(page);
+  const details = page.locator("details").filter({ has: page.locator("#settingsForm") });
+  await details.locator("summary").click();
+  const checkbox = page.getByRole("checkbox", { name: "Automatically approve items agents create" });
+  await expect(checkbox).not.toBeChecked();
+  await checkbox.check();
+  await expect(page.locator("#settingsSaveState")).toContainText("Unsaved changes");
+  await page.locator("#refreshBtn").click();
+  await expect(checkbox).toBeChecked();
+  expect(state.settings.autoApproveAgentItems).toBe(false);
+  await page.getByRole("button", { name: "Save Settings", exact: true }).click();
+  await expect(page.locator("#settingsSaveState")).toHaveText("Settings saved.");
+  expect(state.settings.autoApproveAgentItems).toBe(true);
+  await page.reload();
+  await details.locator("summary").click();
+  await expect(checkbox).toBeChecked();
+  await checkbox.uncheck();
+  await page.getByRole("button", { name: "Save Settings", exact: true }).click();
+  await expect(page.locator("#settingsSaveState")).toHaveText("Settings saved.");
+  expect(state.settings.autoApproveAgentItems).toBe(false);
   expect(errors).toEqual([]);
 });

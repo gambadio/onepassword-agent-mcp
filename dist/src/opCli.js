@@ -91,10 +91,10 @@ export class OpCli {
         const result = await this.run(["read", "--no-newline", secretRef], { timeoutMs: 30_000 });
         return result.stdout;
     }
-    async createSecretItem(input) {
-        return await this.writeTemplate(createItemTemplate(input), input.vault, input.requestId);
+    async createSecretItem(input, options = {}) {
+        return await this.writeTemplate(createItemTemplate(input), input.vault, input.requestId, options.autoApprove === true);
     }
-    async writeTemplate(template, vault, requestId) {
+    async writeTemplate(template, vault, requestId, autoApprove = false) {
         const key = await loadOrCreateKey();
         const digest = (value) => crypto.createHmac("sha256", key).update(JSON.stringify(value)).digest("hex");
         const fingerprint = digest(template);
@@ -109,7 +109,7 @@ export class OpCli {
             const existing = Boolean(operation);
             if (!operation) {
                 operation = { id, fingerprint, vaultId: vault, created: "unknown", verified: false,
-                    approvalStatus: "not_requested", startedAt: new Date().toISOString() };
+                    autoApproveRequested: autoApprove, approvalStatus: "not_requested", startedAt: new Date().toISOString() };
                 const pending = operation;
                 await store.update((file) => { (file.operations ||= []).push(pending); });
             }

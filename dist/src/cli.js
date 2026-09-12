@@ -10,6 +10,7 @@ import { getMenuBarStatus, installMenuBar, launchMenuBar, quitMenuBar, setMenuBa
 import { appHome, keyPath, policyPath } from "./paths.js";
 import { OpCli } from "./opCli.js";
 import { StateStore } from "./state.js";
+import { randomId } from "./cryptoBox.js";
 async function main(argv) {
     const [rawCommand = "help", ...rest] = argv;
     if (rawCommand === "-h" || rawCommand === "--help") {
@@ -35,6 +36,9 @@ async function main(argv) {
         case "runtime":
             printRuntimeInfo();
             return;
+        case "settings":
+            await manageSettings(args);
+            return;
         case "install":
             await guidedInstall();
             return;
@@ -55,6 +59,41 @@ async function main(argv) {
             printHelp();
             process.exitCode = 1;
     }
+}
+async function manageSettings(args) {
+    const [name, value, ...extra] = args.positionals;
+    if (extra.length || (name && name !== "auto-approve") || (value && value !== "on" && value !== "off")) {
+        throw new Error("Use settings [--json] or settings auto-approve [on|off] [--dry-run].");
+    }
+    const store = new StateStore();
+    let { settings } = await store.load();
+    if (value) {
+        const enabled = value === "on";
+        if (args.dryRun) {
+            if (args.json)
+                console.log(JSON.stringify({ dryRun: true, settings: { ...settings, autoApproveAgentItems: enabled } }, null, 2));
+            else
+                console.log(`Dry run: automatic approval for agent-created items in ${settings.mcpVaultName} would be ${enabled ? "enabled" : "disabled"}.`);
+            return;
+        }
+        const updated = await store.update(file => {
+            file.settings.autoApproveAgentItems = enabled;
+            file.audit.unshift({
+                id: randomId("audit"), type: "settings.updated", createdAt: new Date().toISOString(),
+                message: `${enabled ? "Enabled" : "Disabled"} automatic approval for agent-created items via CLI.`,
+            });
+            file.audit = file.audit.slice(0, 200);
+        });
+        settings = updated.settings;
+    }
+    if (args.json) {
+        console.log(JSON.stringify(settings, null, 2));
+        return;
+    }
+    console.log(`Agent vault: ${settings.mcpVaultName}`);
+    console.log(`Agent item creation: ${settings.allowAgentItemCreate ? "enabled" : "disabled"}`);
+    console.log(`Automatic approval for agent-created items: ${settings.autoApproveAgentItems ? "enabled" : "disabled"}`);
+    console.log("Automatic approval covers all supported fields of new agent saves. Existing approvals can be changed in the admin console.");
 }
 async function manageAdmin(args) {
     const action = (args.positionals[0] || "start").toLowerCase();
@@ -102,6 +141,7 @@ function normalizeCommand(command) {
 function parseArgs(argv) {
     const positionals = [];
     let apply = false;
+    let dryRun = false;
     let json = false;
     let scope = "user";
     let help = false;
@@ -111,9 +151,11 @@ function parseArgs(argv) {
         const arg = argv[index];
         if (arg === "--apply" || arg === "--yes") {
             apply = true;
+            dryRun = false;
         }
         else if (arg === "--dry-run") {
             apply = false;
+            dryRun = true;
         }
         else if (arg === "--json") {
             json = true;
@@ -144,7 +186,7 @@ function parseArgs(argv) {
             positionals.push(arg);
         }
     }
-    return { positionals, apply, json, scope, help, launch, launchAtLogin };
+    return { positionals, apply, dryRun, json, scope, help, launch, launchAtLogin };
 }
 function normalizeTarget(target) {
     const value = target.toLowerCase();
@@ -226,6 +268,7 @@ async function doctor() {
         console.log("    Install it with: brew install 1password-cli");
     }
     console.log(`INFO Agent creation permission: ${file.settings.allowAgentItemCreate ? "enabled" : "disabled (enable and save in Settings)"}`);
+    console.log(`INFO Automatic approval for agent-created items: ${file.settings.autoApproveAgentItems ? "enabled" : "disabled (settings auto-approve on to enable)"}`);
     const adminUrl = `http://${file.settings.adminHost}:${file.settings.adminPort}`;
     try {
         const response = await fetch(`${adminUrl}/api/health`, { signal: AbortSignal.timeout(1_500) });
@@ -563,6 +606,7 @@ Usage:
   onepassword-agent-mcp mcp
   onepassword-agent-mcp doctor
   onepassword-agent-mcp runtime
+  onepassword-agent-mcp settings [auto-approve [on|off]] [--json] [--dry-run]
   onepassword-agent-mcp setup [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic] [--apply]
   onepassword-agent-mcp menubar [status|install|launch|remove|login|uninstall]
   onepassword-agent-mcp uninstall [all|claude-code|claude-desktop|codex|copilot|xcode|raycast|generic|menubar|state] [--apply]
@@ -573,6 +617,7 @@ Commands:
   mcp        Start the stdio MCP server. MCP clients run this command.
   doctor     Check Node.js, 1Password CLI, auth, local state, and admin UI.
   runtime    Explain what runs, what persists, and how to stop it.
+  settings   View local settings or toggle automatic approval for agent-created items.
   setup      Print or apply client MCP configuration.
   menubar    Manage the optional visible macOS menu-bar shortcut.
   uninstall  Print or apply client MCP removal. State removal is explicit.
@@ -589,6 +634,13 @@ Admin-console examples:
   onepassword-agent-mcp admin
   onepassword-agent-mcp admin status
   onepassword-agent-mcp admin stop
+
+Auto-approval settings (changes apply immediately; default is off):
+  onepassword-agent-mcp settings
+  onepassword-agent-mcp settings --json
+  onepassword-agent-mcp settings auto-approve on
+  onepassword-agent-mcp settings auto-approve off
+  onepassword-agent-mcp settings auto-approve on --dry-run
 
 Menu-bar examples (macOS only):
   onepassword-agent-mcp menubar status

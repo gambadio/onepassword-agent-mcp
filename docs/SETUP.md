@@ -155,6 +155,16 @@ Leave allowed sites blank when an entry may be used on all URLs.
 
 Approved entries appear under **Allowed For Agents**. Agents can use only enabled approvals.
 
+For items agents create themselves, you can skip manual review by enabling **Automatically approve items agents create** under **Advanced local settings** and saving. This defaults to off and requires agent item creation to be enabled separately. It approves every supported field, including card CVV and PIN, after a verified save into the configured agent vault. Existing and transferred items still require manual approval. See the [user guide](USER_GUIDE.md#automatically-approve-items-agents-create) for site restrictions and revocation behavior.
+
+The same setting is available in the CLI:
+
+```bash
+onepassword-agent-mcp settings auto-approve on
+onepassword-agent-mcp settings auto-approve off
+onepassword-agent-mcp settings --json
+```
+
 ## 9. Save Agent-Created Items Elsewhere
 
 When an agent creates a new credential, it is saved into `MCPVAULT`.

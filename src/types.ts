@@ -43,6 +43,7 @@ export interface Settings {
   autoPasteByDefault: boolean;
   allowPasteWithoutSite: boolean;
   allowAgentItemCreate: boolean;
+  autoApproveAgentItems: boolean;
   defaultVault: string;
   mcpVaultName: string;
 }
@@ -251,8 +252,10 @@ export interface SaveOperation {
   itemId?: string;
   created: boolean | "unknown";
   verified: boolean;
+  autoApproveRequested?: boolean;
   approvalStatus: "not_requested" | "pending" | "approved" | "failed";
   approvalId?: string;
+  approvalIds?: string[];
   auditRecorded?: boolean;
   startedAt: string;
 }

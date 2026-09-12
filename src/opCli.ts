@@ -128,11 +128,11 @@ export class OpCli {
     return result.stdout;
   }
 
-  async createSecretItem(input: CreateSecretItemInput): Promise<VerifiedItem> {
-    return await this.writeTemplate(createItemTemplate(input), input.vault, input.requestId);
+  async createSecretItem(input: CreateSecretItemInput, options: { autoApprove?: boolean } = {}): Promise<VerifiedItem> {
+    return await this.writeTemplate(createItemTemplate(input), input.vault, input.requestId, options.autoApprove === true);
   }
 
-  private async writeTemplate(template: ItemTemplate, vault: string, requestId?: string): Promise<VerifiedItem> {
+  private async writeTemplate(template: ItemTemplate, vault: string, requestId?: string, autoApprove = false): Promise<VerifiedItem> {
     const key = await loadOrCreateKey();
     const digest = (value: unknown) => crypto.createHmac("sha256", key).update(JSON.stringify(value)).digest("hex");
     const fingerprint = digest(template);
@@ -147,7 +147,7 @@ export class OpCli {
       const existing = Boolean(operation);
       if (!operation) {
         operation = { id, fingerprint, vaultId: vault, created: "unknown", verified: false,
-          approvalStatus: "not_requested", startedAt: new Date().toISOString() };
+          autoApproveRequested: autoApprove, approvalStatus: "not_requested", startedAt: new Date().toISOString() };
         const pending = operation;
         await store.update((file) => { (file.operations ||= []).push(pending); });
       }

@@ -32,6 +32,7 @@ test("load repairs a blank agent vault name", async () => {
 
     const file = await new StateStore().load();
     assert.equal(file.settings.mcpVaultName, "MCPVAULT");
+    assert.equal(file.settings.autoApproveAgentItems, false);
     assert.deepEqual(file.profile, []);
   });
 });

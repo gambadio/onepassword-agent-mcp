@@ -280,6 +280,13 @@
               <input name="allowAgentItemCreate" type="checkbox" />
               Allow agents to save new items into MCPVAULT
             </label>
+            <div class="span2">
+              <label class="check">
+                <input name="autoApproveAgentItems" type="checkbox" aria-describedby="autoApproveHint" />
+                Automatically approve items agents create
+              </label>
+              <p id="autoApproveHint" class="hint">Approve all supported fields, including card CVV and PIN, when an agent saves a new item in the configured agent vault. Uses the saved website unless the save specifies allowed sites; without either, approvals work on any website. Existing and copied items still need review. Turning this off keeps existing approvals.</p>
+            </div>
             <button type="submit">Save Settings</button>
               <p id="settingsSaveState" role="status" aria-live="polite">Changes apply after Save Settings.</p>
           </form>

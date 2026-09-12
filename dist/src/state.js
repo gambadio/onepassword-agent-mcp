@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
     autoPasteByDefault: true,
     allowPasteWithoutSite: false,
     allowAgentItemCreate: false,
+    autoApproveAgentItems: false,
     defaultVault: "",
     mcpVaultName: process.env.MCP_VAULT_NAME || "MCPVAULT",
 };
@@ -31,6 +32,7 @@ export class StateStore {
             const raw = await fs.readFile(file, "utf8");
             const parsed = JSON.parse(raw);
             const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+            settings.autoApproveAgentItems = settings.autoApproveAgentItems === true;
             if (!settings.mcpVaultName.trim()) {
                 settings.mcpVaultName = DEFAULT_SETTINGS.mcpVaultName;
             }

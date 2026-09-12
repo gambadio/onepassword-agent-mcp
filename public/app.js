@@ -143,7 +143,7 @@ function renderStatus(status) {
     : cli.authenticated
       ? `1Password CLI ${cli.version || ""} authorized`
       : `1Password CLI ${cli.version || ""} authorization failed: ${cli.authError || "unlock 1Password and refresh"}`;
-  statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed. Agent creation: ${status.settings.allowAgentItemCreate ? "enabled" : "disabled"}.`;
+  statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed. Agent creation: ${status.settings.allowAgentItemCreate ? "enabled" : "disabled"}. Auto approval: ${status.settings.autoApproveAgentItems ? "enabled" : "disabled"}.`;
 
   mcpVaultNameLabel.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
   createVaultBtn.textContent = `Create ${mcpVault.name || "MCPVAULT"}`;
@@ -170,6 +170,7 @@ function renderSettings(settings) {
   settingsForm.clipboardClearSeconds.value = settings.clipboardClearSeconds || 20;
   settingsForm.allowPasteWithoutSite.checked = Boolean(settings.allowPasteWithoutSite);
   settingsForm.allowAgentItemCreate.checked = Boolean(settings.allowAgentItemCreate);
+  settingsForm.autoApproveAgentItems.checked = Boolean(settings.autoApproveAgentItems);
 }
 
 function renderMenuBar(status) {
@@ -1004,6 +1005,7 @@ async function saveSettings(event) {
         clipboardClearSeconds: Number(settingsForm.clipboardClearSeconds.value),
         allowPasteWithoutSite: settingsForm.allowPasteWithoutSite.checked,
         allowAgentItemCreate: settingsForm.allowAgentItemCreate.checked,
+        autoApproveAgentItems: settingsForm.autoApproveAgentItems.checked,
       }),
     });
     if (revision === settingsRevision) settingsDirty = false;

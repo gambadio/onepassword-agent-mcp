@@ -74,7 +74,7 @@ The source search shows up to 500 items by default. After a copy, the left list 
 
 ## Step 3: Approve Agent Fields
 
-After an item is inside `MCPVAULT`, it appears under **Approve Agent Items**. Nothing is shared with agents yet.
+After a copied or moved item is inside `MCPVAULT`, it appears under **Approve Agent Items**. It needs approval before agents can use it. Items saved by agents can use the optional automatic approval setting described below.
 
 Use the boxes at the top of that panel to manage each type independently:
 
@@ -107,6 +107,27 @@ For credit cards, suggested details are usually cardholder name, card number, an
 Approved details appear under **Allowed For Agents**. Agents can request encrypted handles for those entries, but the MCP copy/paste tools do not return plaintext field values.
 
 Supported fields include normal login passwords, API credentials, credit-card number/CVV/expiry fields, secure-note text, SSH private keys, and many custom concealed fields.
+
+## Automatically Approve Items Agents Create
+
+If you want agents to use their newly saved items immediately, open **Advanced local settings** and turn on **Automatically approve items agents create**, then click **Save Settings**. Keep **Allow agents to save new items into MCPVAULT** enabled too.
+
+Automatic approval defaults to off. When enabled, it approves all supported fields after the new item is saved and verified in the configured agent vault. For credit cards this includes CVV and PIN. The entries appear under **Allowed For Agents**, where you can edit their sites, disable them, or delete their approvals.
+
+You can also enable or disable it from the terminal:
+
+```bash
+onepassword-agent-mcp settings auto-approve on
+onepassword-agent-mcp settings auto-approve off
+onepassword-agent-mcp settings --json
+```
+
+The CLI and admin page share the same setting. It applies to subsequent saves without an MCP restart. Add `--dry-run` to preview a CLI change.
+
+- Automatic approvals use the save's allowed sites, or its website if no allowed sites were supplied. Without either, the fields can be used on any website.
+- Agents can pass `approveForAgents: false` to skip approval for a particular save.
+- Existing items and items copied or moved through the console still need review.
+- Turning this setting off keeps existing approvals. A save retry cannot restore an approval you disabled or deleted.
 
 ## Save Agent-Created Items To A Normal Vault
 
@@ -179,6 +200,7 @@ Most users can leave them alone.
 - `Clipboard clear seconds`: how long a copied field value stays on the clipboard.
 - `Allow paste without expected site`: keep this off. It removes the site safety check.
 - `Allow agents to save new items into MCPVAULT`: opt-in write permission for MCP clients to create new items in the agent vault.
+- `Automatically approve items agents create`: opt-in automatic approval of all supported fields when agents save new items. Defaults to off; uses the same setting as `settings auto-approve on|off` in the CLI.
 
 ## Best Practice
 

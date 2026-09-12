@@ -37,6 +37,9 @@ The npm installation does not install a launch agent, daemon, service, startup i
 - Grants outside the configured agent vault are ignored and cannot be resolved.
 - A blank allowed-sites list means the grant may be used for all URLs.
 - Agent-created items are opt-in, and are saved only into the configured agent vault.
+- `autoApproveAgentItems` is a separate setting, off by default, that approves all supported fields submitted in verified agent saves in that vault. It does not bulk-approve existing items, admin transfers, or fields added later, and it does not enable agent item creation. The original save records whether automatic approval was requested; enabling it later does not opt older saves or explicit opt-outs into automatic approval on retry.
+- Automatic approvals include credit-card CVV and PIN. They use explicit `allowedSites`, otherwise the saved item's website; no website or an empty list means all URLs. A save can opt out with `approveForAgents: false`.
+- Disabling automatic approval affects subsequent saves and keeps existing grants. Disable or delete grants to revoke access. Save retries do not restore a revoked grant or resume an incomplete approval batch.
 - Profile data is stored locally and returned in plaintext only through the explicit `get_profile_data` tool.
 
 ## What Is Still Sensitive

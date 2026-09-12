@@ -89,6 +89,7 @@ export async function createAdminApp(options = {}) {
                 autoPasteByDefault: booleanValue(patch.autoPasteByDefault, file.settings.autoPasteByDefault),
                 allowPasteWithoutSite: booleanValue(patch.allowPasteWithoutSite, file.settings.allowPasteWithoutSite),
                 allowAgentItemCreate: booleanValue(patch.allowAgentItemCreate, file.settings.allowAgentItemCreate),
+                autoApproveAgentItems: booleanValue(patch.autoApproveAgentItems, file.settings.autoApproveAgentItems),
             };
             file.audit.unshift({
                 id: `audit_${Date.now()}`,

@@ -29,7 +29,9 @@ export declare class OpCli {
         vault: string;
     }): Promise<void>;
     readSecret(secretRef: string): Promise<string>;
-    createSecretItem(input: CreateSecretItemInput): Promise<VerifiedItem>;
+    createSecretItem(input: CreateSecretItemInput, options?: {
+        autoApprove?: boolean;
+    }): Promise<VerifiedItem>;
     private writeTemplate;
     listCandidates(options: {
         vault?: string;

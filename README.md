@@ -163,6 +163,24 @@ After copying, nothing is shared with agents yet. In **All Fields**, copied item
 
 When agents are allowed to create new credentials, those items are saved into `MCPVAULT` first. In **Approve Agent Items**, open the saved item and use **Save this item to another vault** to copy or move it into a normal 1Password vault. Copy keeps the agent-vault version. Move removes it from `MCPVAULT` and removes local approvals for that copied item.
 
+### Automatically Approve Agent-Created Items
+
+Under **Advanced local settings**, enable **Automatically approve items agents create**, then click **Save Settings**. This option defaults to off. Agent item creation must also be enabled.
+
+When enabled, a verified `save_secret_item` automatically approves every supported field of the new item in the configured agent vault, including credit-card CVV and PIN. The agent can use the resulting encrypted handles immediately. Existing items and items copied or moved in through the admin console still need manual approval.
+
+The CLI controls the same saved option:
+
+```bash
+onepassword-agent-mcp settings auto-approve on
+onepassword-agent-mcp settings auto-approve off
+onepassword-agent-mcp settings --json
+```
+
+Changes apply to subsequent new saves without restarting the MCP server. Add `--dry-run` to preview a change. Turning the option off keeps existing approvals; disable or delete individual approvals in **Allowed For Agents** to revoke them. The automatic approval choice is recorded when each save starts. Retrying an older save or a save that opted out does not opt it into automatic approval, and retries do not reinstate revoked approvals.
+
+Automatic approvals use `allowedSites` when provided, otherwise the saved item's website. An empty list or an item without a website allows all sites. `approveForAgents: false` skips approval for that save. With automatic approval off, `approveForAgents: true` retains the existing single-field approval behavior, using `approveField` when supplied and allowing all sites unless `allowedSites` is provided. With automatic approval on, `approveField` does not narrow the set of approved fields.
+
 ## Client Setup
 
 The setup CLI prints a dry run by default. It detects Claude Code, Claude Desktop, Codex, VS Code, Xcode coding agents, and Raycast AI when they are installed:
@@ -320,7 +338,7 @@ This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items.
 - `copy_secret`: resolve a handle and copy the selected field to the clipboard.
 - `paste_secret`: resolve a handle, copy it, paste into the active app, and return no plaintext.
 - `clear_secret_clipboard`: clear the clipboard.
-- `save_secret_item`: save a new login, password, API credential, secure note, or credit card into `MCPVAULT` when the local save setting is enabled.
+- `save_secret_item`: save a new login, password, API credential, secure note, or credit card into `MCPVAULT` when the local save setting is enabled. Returns verification and approval status, plus `approvedFields` (and the first field as `approvedField` for compatibility). Automatic approval follows the local `autoApproveAgentItems` setting.
 - `get_profile_data`: return user-defined profile data allowed for the current site.
 - `find_passwords_for_site`, `list_approved_passwords`, `copy_password`, `paste_password`, and `clear_password_clipboard`: compatibility aliases.
 - `admin_ui_info`: return the approval console URL.
@@ -336,6 +354,7 @@ Protected:
 - Allowed-site checks run again at copy and paste time.
 - The MCP server only lists and resolves approvals from the configured agent vault.
 - Agent-created items are opt-in, and are saved only into the configured agent vault.
+- Automatic approval of agent-created fields is a separate opt-in setting and defaults to off.
 
 Still sensitive:
 

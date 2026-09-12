@@ -68,6 +68,7 @@ export function createMcpServer() {
                 mcpVaultName: file.settings.mcpVaultName,
                 allowPasteWithoutSite: file.settings.allowPasteWithoutSite,
                 allowAgentItemCreate: file.settings.allowAgentItemCreate,
+                autoApproveAgentItems: file.settings.autoApproveAgentItems,
                 clipboardClearSeconds: file.settings.clipboardClearSeconds,
             },
             cli,
@@ -191,7 +192,7 @@ export function createMcpServer() {
     });
     server.registerTool("save_secret_item", {
         title: "Save Secret Item To 1Password",
-        description: "Create a new item in the configured MCPVAULT. Use this when the user asks the agent to save a new password, API credential, secure note, or credit-card entry. Secret values are sent to the local 1Password CLI through stdin, not command arguments.",
+        description: "Create a new item in the configured MCPVAULT. Use this when the user asks the agent to save a new password, API credential, secure note, or credit-card entry. If local automatic approval is enabled, all supported fields are approved after verification. Secret values are sent to the local 1Password CLI through stdin, not command arguments.",
         inputSchema: {
             title: z.string().trim().min(1),
             requestId: z.string().min(1).max(200).optional().describe("Stable ID for this save. Reuse on retries; use a new ID only for an intentional new item. Identical input is deduplicated when omitted."),
@@ -207,15 +208,17 @@ export function createMcpServer() {
             verificationNumber: z.string().optional(),
             expiry: z.string().optional().describe("Credit-card expiry in 1Password MONTH_YEAR format such as 2028/09."),
             pin: z.string().optional(),
-            approveForAgents: z.boolean().optional().describe("If true, create a local approval for the primary saved field."),
-            allowedSites: z.array(z.string()).optional().describe("Allowed websites for the optional approval. Empty means all sites."),
-            approveField: z.string().optional().describe("Optional field id, label, or kind to approve, such as password, credential, ccnum, or credit_card_number."),
+            approveForAgents: z.boolean().optional().describe("Omit to follow local automatic approval settings. False skips approval for this save. True requests the primary field when automatic approval is off; when on, all supported fields are approved."),
+            allowedSites: z.array(z.string()).optional().describe("Allowed websites for approvals. Empty means all sites. If omitted, automatic approvals use the saved item's website; explicit single-field approvals allow all sites."),
+            approveField: z.string().optional().describe("Field id, label, or kind for an explicit single-field approval when automatic approval is off, such as password, credential, ccnum, or credit_card_number."),
         },
     }, async (input) => {
         const file = await store.load();
         if (!file.settings.allowAgentItemCreate) {
             throw new Error("Agent item creation is disabled in local settings.");
         }
+        let autoApprove = file.settings.autoApproveAgentItems && input.approveForAgents !== false;
+        let shouldApprove = autoApprove || input.approveForAgents === true;
         const op = new OpCli(file.settings);
         const vaults = await op.listVaults();
         const mcpVault = vaults.find((vault) => {
@@ -229,15 +232,15 @@ export function createMcpServer() {
         const createInput = { ...input, vault };
         const key = await loadOrCreateKey();
         const template = createItemTemplate(createInput);
-        if (input.approveForAgents) {
+        if (shouldApprove) {
             const preview = op.itemToCandidates({ ...template, id: "preview", vault: { id: vault, name: file.settings.mcpVaultName } }, key, vault);
-            if (!selectCandidateToApprove(preview, input.approveField)) {
+            if (autoApprove ? !preview.length : !selectCandidateToApprove(preview, input.approveField)) {
                 throw new Error("The requested approval selector does not match an approvable field. No item was created.");
             }
         }
         let created;
         try {
-            created = await op.createSecretItem(createInput);
+            created = await op.createSecretItem(createInput, { autoApprove });
             verifyItemTemplate(created, template, vault, created.id);
         }
         catch (error) {
@@ -248,8 +251,8 @@ export function createMcpServer() {
                     error: error instanceof ItemWriteError ? error.message : "The saved item could not be verified. Check its identity before retrying.",
                     note: "Retry with the same requestId and input to reconcile this operation. No secret values were returned." }), isError: true };
         }
-        let approvalStatus = input.approveForAgents ? "pending" : "not_requested";
-        let approvedField;
+        let approvalStatus = shouldApprove ? "pending" : "not_requested";
+        let approvedFields = [];
         let auditRecorded = false;
         const warnings = [];
         try {
@@ -257,6 +260,11 @@ export function createMcpServer() {
                 const operation = (await store.load()).operations?.find((entry) => entry.id === created.operationId);
                 if (!operation)
                     throw new Error("Save operation record is missing.");
+                // An ordinary retry must not opt an older save (or an explicit opt-out)
+                // into automatic approval just because today's setting is enabled.
+                autoApprove = autoApprove && operation.autoApproveRequested === true;
+                shouldApprove = autoApprove || input.approveForAgents === true;
+                approvalStatus = shouldApprove ? "pending" : "not_requested";
                 await store.update((state) => {
                     const saved = state.operations.find((entry) => entry.id === created.operationId);
                     if (!saved.auditRecorded) {
@@ -267,28 +275,43 @@ export function createMcpServer() {
                     }
                 });
                 auditRecorded = true;
-                if (input.approveForAgents) {
+                if (shouldApprove) {
                     // A retry must never recreate an approval that the user has since revoked.
                     if (operation.approvalStatus === "approved" || operation.approvalStatus === "pending") {
-                        const grant = (await store.load()).grants.find((entry) => entry.id === operation.approvalId && entry.enabled);
-                        approvalStatus = grant ? "approved" : "requires_review";
-                        approvedField = grant?.fieldLabel;
+                        const ids = operation.approvalIds || (operation.approvalId ? [operation.approvalId] : []);
+                        const grants = (await store.load()).grants.filter(entry => ids.includes(entry.id) && entry.enabled);
+                        approvalStatus = operation.approvalStatus === "approved" && ids.length > 0 && grants.length === ids.length
+                            ? "approved" : "requires_review";
+                        approvedFields = grants.map(grant => grant.fieldLabel);
                     }
                     else {
-                        const candidates = op.itemToCandidates(created, key, vault, "all");
-                        const selected = selectCandidateToApprove(candidates, input.approveField);
-                        if (!selected)
+                        // A reconciled save may now contain fields a human added later.
+                        // Automatic approval is limited to the fields the agent submitted.
+                        const approvalItem = autoApprove ? {
+                            ...created,
+                            fields: created.fields?.filter(field => template.fields.some(expected => expected.id === field.id && (expected.section?.id || "") === (field.section?.id || ""))),
+                        } : created;
+                        const candidates = op.itemToCandidates(approvalItem, key, vault, "all");
+                        const primary = selectCandidateToApprove(candidates, input.approveField);
+                        const selected = autoApprove ? candidates : primary ? [primary] : [];
+                        if (!selected.length)
                             throw new Error("The saved field could not be selected for approval.");
                         await store.update((state) => { state.operations.find((entry) => entry.id === created.operationId).approvalStatus = "pending"; });
                         try {
-                            const grant = await policy.createFromCandidate(selected.token, { sites: input.allowedSites || [], enabled: true });
-                            approvalStatus = "approved";
-                            approvedField = grant.fieldLabel;
+                            const approvalIds = [];
+                            for (const candidate of selected) {
+                                const grant = await policy.createFromCandidate(candidate.token, {
+                                    sites: input.allowedSites ?? (autoApprove ? candidate.sites : []), enabled: true,
+                                });
+                                approvalIds.push(grant.id);
+                                approvedFields.push(grant.fieldLabel);
+                            }
                             await store.update((state) => {
                                 Object.assign(state.operations.find((entry) => entry.id === created.operationId), {
-                                    approvalStatus: "approved", approvalId: grant.id,
+                                    approvalStatus: "approved", approvalId: approvalIds[0], approvalIds,
                                 });
                             });
+                            approvalStatus = "approved";
                         }
                         catch {
                             approvalStatus = "requires_review";
@@ -299,7 +322,7 @@ export function createMcpServer() {
             });
         }
         catch {
-            if (input.approveForAgents && approvalStatus !== "approved")
+            if (shouldApprove && approvalStatus !== "approved")
                 approvalStatus = "requires_review";
             warnings.push("Item saved and verified. Local audit or approval recording did not finish; retry the same save to reconcile it.");
         }
@@ -307,7 +330,7 @@ export function createMcpServer() {
             ok: true, created: true, verified: true, itemId: created.id, vaultId: created.vault.id,
             operationId: created.operationId, vault: file.settings.mcpVaultName, title: created.title,
             category: created.category, approved: approvalStatus === "approved", approvalStatus,
-            approvedField, auditRecorded, warnings,
+            approvedField: approvedFields[0], approvedFields, auditRecorded, warnings,
             note: "Secret values were saved, verified in 1Password, and were not returned.",
         });
     });
