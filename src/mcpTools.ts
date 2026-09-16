@@ -58,6 +58,7 @@ export function createMcpServer(): McpServer {
           installed: true,
           authenticated,
           version,
+          path: await op.executablePath(),
           mcpVaultVisible,
           authError,
         };

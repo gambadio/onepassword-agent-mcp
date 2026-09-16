@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { runProcess } from "./processRunner.js";
+import { resolveOpExecutable } from "./opExecutable.js";
 import { withFileLock } from "./fileLock.js";
 import { StateStore } from "./state.js";
 import { appHome } from "./paths.js";
@@ -8,8 +9,13 @@ import { loadOrCreateKey, sealJson } from "./cryptoBox.js";
 import { formatSites } from "./siteMatch.js";
 export class OpCli {
     settings;
+    resolvedExecutable;
     constructor(settings) {
         this.settings = settings;
+    }
+    async executablePath() {
+        this.resolvedExecutable ||= await resolveOpExecutable(this.settings.opPath);
+        return this.resolvedExecutable;
     }
     async version() {
         const result = await this.run(["--version"], { timeoutMs: 8_000 });
@@ -269,7 +275,7 @@ export class OpCli {
         return results;
     }
     async run(args, options = {}) {
-        return await runProcess(this.settings.opPath || "op", this.withGlobalArgs(args), {
+        return await runProcess(await this.executablePath(), this.withGlobalArgs(args), {
             ...options, osPipe: true, env: this.opEnv(),
         });
     }

@@ -51,6 +51,7 @@ export async function createAdminApp(options = {}) {
                 installed: true,
                 authenticated: authError === null,
                 version,
+                path: await op.executablePath(),
                 vaults: vaults.map((vault) => ({ id: vault.id, name: vault.name, items: vault.items })),
                 mcpVault,
                 authError,

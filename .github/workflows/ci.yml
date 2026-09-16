@@ -11,7 +11,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -42,6 +46,22 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Test Mac CLI discovery with the menu-bar PATH
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install 1password-cli
+          node_path="$(command -v node)"
+          env PATH=/usr/bin:/bin:/usr/sbin:/sbin "$node_path" --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import path from 'node:path';
+          import { OpCli } from './dist/src/opCli.js';
+          const cli = new OpCli({ opPath: 'op', account: '' });
+          assert.match(await cli.version(), /^\d+\.\d+\.\d+/);
+          assert.ok(path.isAbsolute(await cli.executablePath()));
+          console.log(`Found 1Password CLI at ${await cli.executablePath()} with the menu-bar PATH.`);
+          JS
 
       - name: Inspect publish contents
         run: npm pack --dry-run

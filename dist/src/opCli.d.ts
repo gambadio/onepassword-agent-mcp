@@ -6,7 +6,9 @@ interface RunResult {
 }
 export declare class OpCli {
     private readonly settings;
+    private resolvedExecutable?;
     constructor(settings: Settings);
+    executablePath(): Promise<string>;
     version(): Promise<string>;
     whoami(): Promise<unknown>;
     listVaults(): Promise<OpVaultSummary[]>;

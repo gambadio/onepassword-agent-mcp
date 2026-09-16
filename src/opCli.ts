@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import path from "node:path";
 import { runProcess, type ProcessOptions } from "./processRunner.js";
+import { resolveOpExecutable } from "./opExecutable.js";
 import { withFileLock } from "./fileLock.js";
 import { StateStore } from "./state.js";
 import { appHome } from "./paths.js";
@@ -27,7 +28,14 @@ interface RunResult {
 }
 
 export class OpCli {
+  private resolvedExecutable?: string;
+
   constructor(private readonly settings: Settings) {}
+
+  async executablePath(): Promise<string> {
+    this.resolvedExecutable ||= await resolveOpExecutable(this.settings.opPath);
+    return this.resolvedExecutable;
+  }
 
   async version(): Promise<string> {
     const result = await this.run(["--version"], { timeoutMs: 8_000 });
@@ -334,7 +342,7 @@ export class OpCli {
   }
 
   async run(args: string[], options: ProcessOptions = {}): Promise<RunResult> {
-    return await runProcess(this.settings.opPath || "op", this.withGlobalArgs(args), {
+    return await runProcess(await this.executablePath(), this.withGlobalArgs(args), {
       ...options, osPipe: true, env: this.opEnv(),
     });
   }

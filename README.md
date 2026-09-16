@@ -142,6 +142,8 @@ Enable the 1Password desktop integration:
 3. Turn on **Integrate with 1Password CLI**.
 4. When your agent or terminal asks for access, approve only clients you trust.
 
+On macOS, leave **1Password CLI path** as `op` for automatic discovery. The admin console, MCP server, and `doctor` check `PATH`, then `/opt/homebrew/bin/op` and `/usr/local/bin/op`. This also works when the menu-bar app starts with macOS's limited GUI environment. Existing settings that use `op` work without a reset or reinstall. A custom path or wrapper command is used exactly as configured.
+
 ![Authorize CLI access](docs/screenshots/authorize-codex.svg)
 
 ## The Local Console
@@ -418,7 +420,8 @@ onepassword-agent-mcp doctor
 
 Common fixes:
 
-- `op` missing: install the 1Password CLI.
+- `op` missing: install the 1Password CLI. On macOS, automatic discovery also checks the standard Homebrew locations even if they are absent from `PATH`.
+- Terminal works but the admin cannot find the CLI: use `op` in **Advanced local settings** for automatic discovery, or correct an explicitly configured CLI path. `doctor` and the status APIs report the selected executable. Older releases that only searched `PATH` need the full path, such as `/opt/homebrew/bin/op` on Apple Silicon Macs.
 - 1Password auth failure: enable desktop CLI integration or set `OP_SERVICE_ACCOUNT_TOKEN`.
 - `MCPVAULT` missing: start the admin console and click **Create MCPVAULT**.
 - Copilot setup cannot find `code`: install the VS Code shell command or use `.vscode/mcp.json`.

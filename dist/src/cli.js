@@ -241,7 +241,7 @@ async function doctor() {
     }
     try {
         const version = await op.version();
-        ok(`1Password CLI: ${version}`);
+        ok(`1Password CLI: ${version} (${await op.executablePath()})`);
         try {
             const vaults = await op.listVaults();
             ok(`1Password auth: ${vaults.length} vault(s) visible`);
