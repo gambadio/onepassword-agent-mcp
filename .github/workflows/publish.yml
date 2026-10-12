@@ -58,6 +58,23 @@ jobs:
             npm publish --access public
           fi
 
+      - name: Wait for npm package availability
+        timeout-minutes: 6
+        run: |
+          PACKAGE_NAME=$(node -p "require('./package.json').name")
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          for attempt in $(seq 1 20); do
+            PUBLISHED_VERSION=$(npm view "${PACKAGE_NAME}@${PACKAGE_VERSION}" version --prefer-online --fetch-retries=0 2>/dev/null || true)
+            if [ "${PUBLISHED_VERSION}" = "${PACKAGE_VERSION}" ]; then
+              echo "npm serves ${PACKAGE_NAME}@${PACKAGE_VERSION}; continuing to the MCP Registry."
+              exit 0
+            fi
+            echo "npm is still processing the package (attempt ${attempt}/20)."
+            sleep 15
+          done
+          echo "npm has not made the accepted package available yet. Retry this workflow after processing finishes."
+          exit 1
+
       - name: Install verified MCP Registry publisher
         env:
           MCP_PUBLISHER_VERSION: v1.8.0
