@@ -28,7 +28,7 @@ The npm installation does not install a launch agent, daemon, service, startup i
 
 ## What Is Protected
 
-- Passwords and other 1Password secret fields are not stored by this project.
+- Saved item secrets stay in 1Password. Clipboard captures are temporarily encrypted locally for retry, and an optional service-account token is encrypted locally for unattended access.
 - MCP copy/paste tools never return plaintext 1Password secret fields.
 - Approved handles are encrypted with a local AES-256-GCM key in `~/.onepassword-mcp/key.bin`.
 - The encrypted handle is rechecked against the current local grant before each copy or paste.
@@ -110,3 +110,21 @@ Keep this off unless you want connected MCP clients to be able to create new ite
 ## Profile Data
 
 Profile data such as email address, phone number, mailing address, name, and company is stored in this app's local policy file. It is not fetched from 1Password. The MCP returns those values directly through `get_profile_data`, filtered by each profile entry's allowed-sites list.
+
+## Clipboard Capture
+
+`save_secret_from_clipboard` accepts metadata only. Both `allowAgentItemCreate` and `allowClipboardSave` must be enabled before the OS clipboard is read. The app preserves exact text and passes it through CLI stdin without putting it into process arguments, tool results, logs, or plaintext temporary files.
+
+A required stable request ID binds the metadata to an AES-256-GCM encrypted capture for 15 minutes. Retrying does not silently read a changed clipboard. Expired captures cannot be reused, and expiry does not create a replacement item. Clipboard clear checks for the original value again, but OS clipboard tools do not provide an atomic compare-and-clear operation; a racing copy can still interfere. Clipboard managers and other local processes can retain copied data independently. Remote browsers need an explicit trusted path to the MCP host's clipboard; this tool does not scrape remote pages.
+
+Only the local app receives the captured value. Browser automation must click Copy without reading secret DOM values or rendering them into model-visible output. Secrets already pasted in chat, returned by another tool, or visible in a screenshot are already in context. Names, websites, usernames, and request IDs are metadata and must not contain secrets.
+
+The retry window is enforced even after a restart. Ciphertext cleanup runs at expiry while the process is running or on the next capture after downtime. A metadata-only tombstone remains so an old request ID cannot start a different save.
+
+## Unattended Authentication
+
+The local dashboard can store a service-account token in `access.json`, encrypted with the existing `key.bin`, with owner-only file permissions. It is separate from policy/settings, never included in API or MCP status, and loaded only into the 1Password CLI environment. The environment token takes precedence over a local token. Service-account calls omit desktop account selection and Connect credentials; corrupt enabled local credentials fail closed instead of falling back to desktop access.
+
+Use a service account scoped to the dedicated agent vault with `read_items` and, when saving, `write_items`. Desktop integration retains 1Password's own unlock/authorization behavior. MCP hosts retain their own tool-call confirmations. This app does not override either layer. Disabling local unattended access returns subsequent calls to desktop authentication; deleting it removes the local encrypted file. Revoke at 1Password to invalidate the token everywhere. Operations already running can finish.
+
+Local encryption protects persisted contents, not against another process with access to both `key.bin` and ciphertext. Protect this directory and backups. API responses disable caching; the admin console rejects foreign browser origins and cross-site requests, rejects non-loopback hostnames unless an admin token is configured, and restricts scripts to its own assets. Continue to bind the dashboard to loopback. A local process running as your user is trusted and can use the admin API.

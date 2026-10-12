@@ -8,19 +8,41 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <header class="topbar">
-      <div class="brand">
+    <a class="skipLink" href="#mainContent">Skip to content</a>
+    <aside class="sidebar">
+      <a class="brand" href="#vault" aria-label="1Password Agent MCP home">
         <img src="/assets/logo.svg" alt="" />
-        <div>
-          <h1>1Password Agent MCP</h1>
-          <p id="statusLine">Checking local server...</p>
-        </div>
-      </div>
-      <button id="refreshBtn" type="button" title="Refresh status">Refresh</button>
-    </header>
+        <span><strong>1Password</strong><small>AGENT MCP</small></span>
+      </a>
+      <p class="navCaption">WORKSPACE</p>
+      <nav aria-label="Dashboard">
+        <a href="#vault" data-nav="vault" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><circle cx="12" cy="11" r="3"/><path d="M12 14v3M8 11h1m6 0h1"/></svg>Vault</a>
+        <a href="#permissions" data-nav="permissions"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="m8 12 3 3 5-6"/></svg>Permissions</a>
+        <a href="#profile" data-nav="profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/></svg>Profile</a>
+        <a href="#activity" data-nav="activity"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>Activity</a>
+      </nav>
+      <div class="sidebarNote"><span class="localDot"></span><strong>Local by design</strong><p>Secrets stay between your Mac and 1Password.</p></div>
+      <a class="sidebarDocs" href="https://github.com/gambadio/onepassword-agent-mcp#readme" target="_blank" rel="noreferrer">Documentation <span aria-hidden="true">↗</span></a>
+    </aside>
 
-    <main class="layout">
-      <section class="panel wide setupPanel">
+    <div class="workspace">
+      <header class="topbar">
+        <p class="breadcrumb">Agent workspace <span aria-hidden="true">/</span> <strong id="currentViewLabel">Vault</strong></p>
+        <div class="topbarActions"><span id="connectionState" class="connectionState">Connecting</span><button id="refreshBtn" class="secondary" type="button" title="Refresh status">Refresh</button></div>
+      </header>
+      <main id="mainContent" class="layout" tabindex="-1">
+        <div class="pageHeading wide">
+          <div><p class="eyebrow">YOUR LOCAL CONTROL CENTER</p><h1 id="viewTitle">Your vault. Your rules.</h1><p id="viewDescription">Give your agents the access they need. Keep your secrets in 1Password.</p></div>
+          <a class="buttonLink" id="permissionsShortcut" href="#permissions">Manage permissions <span aria-hidden="true">↗</span></a>
+        </div>
+        <div id="message" class="message wide" role="status" hidden></div>
+        <div class="summaryStrip wide" data-view="vault">
+          <div><span class="metricLabel">Approved fields</span><strong id="approvedMetric">—</strong><small>Available to your agents</small></div>
+          <div><span class="metricLabel">Agent vault</span><strong id="vaultMetric">MCPVAULT</strong><small id="vaultMetricDetail">Checking connection…</small></div>
+          <div><span class="metricLabel">Clipboard capture</span><strong id="captureMetric">Off</strong><small>Save without sharing the secret</small></div>
+        </div>
+
+      <section class="panel wide setupPanel" data-view="vault">
         <div class="panelHeader">
           <div>
             <h2>Agent Vault Setup</h2>
@@ -51,10 +73,9 @@
             </div>
           </div>
         </div>
-        <div id="message" class="message" role="status" hidden></div>
       </section>
 
-      <section class="panel sourcePanel">
+      <section class="panel sourcePanel" data-view="vault">
         <div class="panelHeader">
           <div>
             <h2>Choose From 1Password</h2>
@@ -91,7 +112,7 @@
         <div id="sourceCandidates" class="list"></div>
       </section>
 
-      <section id="mcpVaultDrop" class="panel mcpPanel" aria-label="MCPVAULT agent item approval area">
+      <section id="mcpVaultDrop" class="panel mcpPanel" data-view="vault" aria-label="MCPVAULT agent item approval area">
         <div class="panelHeader">
           <div>
             <h2>Approve Agent Items</h2>
@@ -153,7 +174,7 @@
         <div id="mcpCandidates" class="list"></div>
       </section>
 
-      <section class="panel wide allowedPanel">
+      <section class="panel wide allowedPanel" data-view="vault">
         <div class="panelHeader">
           <div>
             <h2>Allowed For Agents</h2>
@@ -164,7 +185,7 @@
         <div id="grants" class="list grantList"></div>
       </section>
 
-      <section class="panel wide">
+      <section class="panel wide" data-view="profile" hidden>
         <div class="panelHeader">
           <div>
             <h2>Profile Data For Agents</h2>
@@ -201,7 +222,7 @@
         <div id="profileEntries" class="list profileList"></div>
       </section>
 
-      <section class="panel wide">
+      <section class="panel wide" data-view="vault">
         <details>
           <summary>Expert fallback: add a secret reference manually</summary>
           <p class="hint detailsHint">Use this only for a custom field already inside the agent vault, such as an API token field that search does not show.</p>
@@ -227,7 +248,45 @@
         </details>
       </section>
 
-      <section id="menuBarPanel" class="panel wide companionPanel">
+      <section class="panel permissionsPanel" data-view="permissions" hidden>
+        <div class="panelHeader"><div><span class="sectionLabel">01 / AGENT PERMISSIONS</span><h2>Decide once. Stay in control.</h2><p class="hint">Choose what agents may save and use. Changes apply when you save.</p></div></div>
+        <form id="settingsForm">
+          <div class="permissionList">
+            <label class="permissionRow"><span><strong>Allow agents to save new items into MCPVAULT</strong><small>Let agents create logins, passwords, API credentials, and other supported items in your agent vault.</small></span><input name="allowAgentItemCreate" type="checkbox" aria-label="Allow agents to save new items into MCPVAULT" /></label>
+            <label class="permissionRow"><span><strong>Save secrets from the clipboard</strong><small>Copy a password or token in your browser or another app. The local server saves it to 1Password without returning its value to the agent. Also requires item creation above.</small></span><input name="allowClipboardSave" type="checkbox" aria-label="Save secrets from the clipboard" /></label>
+            <label class="permissionRow"><span><strong>Automatically approve items agents create</strong><small id="autoApproveHint">Approve all supported fields on newly created items, including card CVV and PIN. Uses the saved website or specified allowed sites; without either, access works on any website. Existing and copied items still need review. Turning this off keeps existing approvals.</small></span><input name="autoApproveAgentItems" type="checkbox" aria-label="Automatically approve items agents create" aria-describedby="autoApproveHint" /></label>
+          </div>
+          <div class="infoNote"><strong>Three separate permissions</strong><p>These settings control this app. A service account below avoids repeated 1Password unlock prompts. Tool approvals in Codex, Claude, or another MCP client are managed in that client.</p></div>
+          <details class="advancedSettings"><summary>Advanced local settings</summary><div class="settingsGrid">
+            <label>Agent vault name<input name="mcpVaultName" /></label>
+            <label>1Password CLI path<input name="opPath" /></label>
+            <label>Account<input name="account" placeholder="Optional account shorthand or sign-in address" /></label>
+            <label>Clipboard clear seconds<input name="clipboardClearSeconds" type="number" min="1" max="300" /></label>
+            <label class="check span2"><input name="allowPasteWithoutSite" type="checkbox" />Allow paste without expected site</label>
+          </div></details>
+          <div class="formFooter"><p id="settingsSaveState" role="status" aria-live="polite">Changes apply after Save Settings.</p><button type="submit">Save Settings</button></div>
+        </form>
+      </section>
+
+      <section class="panel accessPanel" data-view="permissions" hidden>
+        <div class="panelHeader"><div><span class="sectionLabel">02 / UNATTENDED ACCESS</span><h2>Keep working while you’re away.</h2><p class="hint">Connect a 1Password service account to use the vault without repeated desktop authorization prompts.</p></div></div>
+        <div class="accessState"><span class="statusIcon" aria-hidden="true">◈</span><div><strong id="accessStatus">Checking access…</strong><p id="accessDescription" class="hint">Loading local configuration.</p></div></div>
+        <ol class="accessSteps"><li>Create a service account in your 1Password account.</li><li>Grant <strong>read and write access only to your agent vault</strong> (<span id="accessVaultName">MCPVAULT</span>).</li><li>Paste its token below. It is encrypted locally and never shown again.</li></ol>
+        <form id="accessForm" method="post" action="/api/access" autocomplete="off">
+          <label for="accessToken">Service account token</label>
+          <input id="accessToken" name="token" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Paste your service account token" required aria-describedby="accessTokenHint" />
+          <p id="accessTokenHint" class="hint">Saved only on this computer. The input clears as soon as you submit it.</p>
+          <button id="accessSaveBtn" type="submit">Save encrypted token</button>
+        </form>
+        <div id="savedAccessControls" hidden>
+          <label class="permissionRow compact"><span><strong>Use saved service account</strong><small>Pause to return to desktop authorization.</small></span><input id="accessEnabled" type="checkbox" aria-label="Use saved service account" /></label>
+          <div class="accessActions"><button id="accessTestBtn" type="button" class="secondary">Test connection</button><button id="accessRemoveBtn" type="button" class="danger">Remove saved token</button></div>
+        </div>
+        <p id="accessMessage" class="inlineMessage" role="status" aria-live="polite"></p>
+        <p class="hint accessFootnote">Unattended access still requires this Mac and the MCP server to be running. It does not override approvals in your agent client.</p>
+      </section>
+
+      <section id="menuBarPanel" class="panel wide companionPanel" data-view="permissions" hidden>
         <div class="panelHeader">
           <div>
             <h2>Mac Menu Bar Shortcut</h2>
@@ -252,54 +311,15 @@
         <p class="hint companionNote">The shortcut is optional. Use Remove From Menu Bar to close it without uninstalling, or Uninstall Menu Bar Shortcut to remove the helper and its login item. Neither changes MCPVAULT or your approvals.</p>
       </section>
 
-      <section class="panel wide">
-        <details>
-          <summary>Advanced local settings</summary>
-          <form id="settingsForm" class="settingsGrid">
-            <label>
-              Agent vault name
-              <input name="mcpVaultName" />
-            </label>
-            <label>
-              1Password CLI path
-              <input name="opPath" />
-            </label>
-            <label>
-              Account
-              <input name="account" placeholder="Optional account shorthand or sign-in address" />
-            </label>
-            <label>
-              Clipboard clear seconds
-              <input name="clipboardClearSeconds" type="number" min="1" max="300" />
-            </label>
-            <label class="check">
-              <input name="allowPasteWithoutSite" type="checkbox" />
-              Allow paste without expected site
-            </label>
-            <label class="check">
-              <input name="allowAgentItemCreate" type="checkbox" />
-              Allow agents to save new items into MCPVAULT
-            </label>
-            <div class="span2">
-              <label class="check">
-                <input name="autoApproveAgentItems" type="checkbox" aria-describedby="autoApproveHint" />
-                Automatically approve items agents create
-              </label>
-              <p id="autoApproveHint" class="hint">Approve all supported fields, including card CVV and PIN, when an agent saves a new item in the configured agent vault. Uses the saved website unless the save specifies allowed sites; without either, approvals work on any website. Existing and copied items still need review. Turning this off keeps existing approvals.</p>
-            </div>
-            <button type="submit">Save Settings</button>
-              <p id="settingsSaveState" role="status" aria-live="polite">Changes apply after Save Settings.</p>
-          </form>
-        </details>
-      </section>
-
-      <section class="panel wide">
+      <section class="panel wide" data-view="activity" hidden>
         <div class="panelHeader">
           <h2>Recent Activity</h2>
         </div>
         <div id="audit" class="audit"></div>
       </section>
-    </main>
+        <footer class="workspaceFooter wide"><p id="statusLine">Checking local server…</p><span>1Password Agent MCP · Local dashboard</span></footer>
+      </main>
+    </div>
 
     <template id="grantTemplate">
       <article class="item">

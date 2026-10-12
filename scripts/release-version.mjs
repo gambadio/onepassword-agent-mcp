@@ -2,9 +2,11 @@ import { readFile, writeFile } from "node:fs/promises";
 
 const packagePath = new URL("../package.json", import.meta.url);
 const serverPath = new URL("../server.json", import.meta.url);
+const manifestPath = new URL("../manifest.json", import.meta.url);
 
 const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
 const serverJson = JSON.parse(await readFile(serverPath, "utf8"));
+const manifestJson = JSON.parse(await readFile(manifestPath, "utf8"));
 const [command = "check", tag] = process.argv.slice(2);
 
 function registryPackageVersions() {
@@ -15,6 +17,7 @@ function registryPackageVersions() {
 
 if (command === "sync") {
   serverJson.version = packageJson.version;
+  manifestJson.version = packageJson.version;
   for (const entry of serverJson.packages ?? []) {
     if (entry.registryType === "npm" && entry.identifier === packageJson.name) {
       entry.version = packageJson.version;
@@ -22,6 +25,7 @@ if (command === "sync") {
   }
 
   await writeFile(serverPath, `${JSON.stringify(serverJson, null, 2)}\n`);
+  await writeFile(manifestPath, `${JSON.stringify(manifestJson, null, 2)}\n`);
   console.log(`Synchronized server.json to ${packageJson.version}.`);
   process.exit(0);
 }
@@ -30,10 +34,10 @@ if (command !== "check") {
   throw new Error(`Unknown release-version command: ${command}`);
 }
 
-const versions = [serverJson.version, ...registryPackageVersions()];
+const versions = [serverJson.version, manifestJson.version, ...registryPackageVersions()];
 if (versions.some((version) => version !== packageJson.version)) {
   throw new Error(
-    `Release versions do not match: package.json=${packageJson.version}, server.json=${versions.join(",")}`,
+    `Release versions do not match: package.json=${packageJson.version}, registry/bundle=${versions.join(",")}`,
   );
 }
 

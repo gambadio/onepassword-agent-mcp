@@ -29,13 +29,49 @@ npm run release:major
 The command:
 
 1. Runs the type-checker and test suite.
-2. Updates `package.json`, `package-lock.json`, and `server.json` together.
+2. Updates `package.json`, `package-lock.json`, `server.json`, and the MCPB `manifest.json` together.
 3. Creates the version commit and matching `vX.Y.Z` tag.
 4. Pushes the commit and tag.
 
 The tag starts `.github/workflows/publish.yml`, which verifies the versions, tests and builds again, publishes npm with provenance, updates the official MCP Registry, and creates the GitHub Release.
 
 Watch the release at [GitHub Actions](https://github.com/gambadio/onepassword-agent-mcp/actions/workflows/publish.yml). A failed workflow can be inspected and rerun there.
+
+## Local MCP Bundle for Smithery
+
+Smithery distributes local stdio servers as MCPB bundles. Keep `manifest.json` at
+the same version as `package.json`, `package-lock.json`, and `server.json`.
+
+```bash
+node scripts/build-mcpb.mjs
+```
+
+The build compiles the app, stages only runtime files in a temporary directory,
+and installs production dependencies from the lockfile with lifecycle scripts
+disabled. It never copies the working tree's `node_modules`, environment files,
+or local 1Password state. The pinned official `@anthropic-ai/mcpb@2.1.2` tool
+validates and packs the bundle. ZIP timestamps and file attributes are normalized
+so repeat builds from identical inputs produce identical bytes on the same
+platform. The temporary staging directory is removed even if the build fails.
+
+The result is `dist/onepassword-agent-mcp-VERSION.mcpb`, with its SHA-256 printed
+after building. Use `--output /path/to/server.mcpb` to choose another destination.
+The npm cache defaults to a dedicated directory under the system temporary
+directory; `NPM_CONFIG_CACHE` overrides it.
+
+After testing the bundle's local stdio startup, an authenticated maintainer can
+publish it without exposing a remote password server:
+
+```bash
+smithery mcp publish ./dist/onepassword-agent-mcp-VERSION.mcpb -n gambadio/onepassword-agent-mcp
+```
+
+Smithery publication requires its own account authorization; the npm/MCP Registry
+OIDC release does not authorize Smithery. Verify the release status and downloadable
+bundle on Smithery after publishing. The bundle still requires the 1Password CLI
+installed and authorized locally. It does not include credentials or configure
+unattended access. See the [Smithery publishing guide](https://smithery.ai/docs/build/publish)
+and [MCPB specification](https://github.com/modelcontextprotocol/mcpb/blob/main/MANIFEST.md).
 
 ## Why There Is No Device Prompt
 

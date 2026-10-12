@@ -12,6 +12,7 @@ export interface Settings {
     autoPasteByDefault: boolean;
     allowPasteWithoutSite: boolean;
     allowAgentItemCreate: boolean;
+    allowClipboardSave: boolean;
     autoApproveAgentItems: boolean;
     defaultVault: string;
     mcpVaultName: string;

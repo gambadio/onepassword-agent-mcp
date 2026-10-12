@@ -21,6 +21,7 @@ import type {
 } from "./types.js";
 import { loadOrCreateKey, sealJson } from "./cryptoBox.js";
 import { formatSites } from "./siteMatch.js";
+import { AccessStore } from "./access.js";
 
 interface RunResult {
   stdout: string;
@@ -342,8 +343,9 @@ export class OpCli {
   }
 
   async run(args: string[], options: ProcessOptions = {}): Promise<RunResult> {
-    return await runProcess(await this.executablePath(), this.withGlobalArgs(args), {
-      ...options, osPipe: true, env: this.opEnv(),
+    const env = await this.opEnv();
+    return await runProcess(await this.executablePath(), env.OP_SERVICE_ACCOUNT_TOKEN ? args : this.withGlobalArgs(args), {
+      ...options, osPipe: true, env,
     });
   }
 
@@ -353,12 +355,21 @@ export class OpCli {
     return ["--account", this.settings.account, ...args];
   }
 
-  private opEnv(): NodeJS.ProcessEnv {
-    return {
+  private async opEnv(): Promise<NodeJS.ProcessEnv> {
+    const env: NodeJS.ProcessEnv = {
       ...process.env,
       OP_FORMAT: "json",
       OP_ACCOUNT: this.settings.account || process.env.OP_ACCOUNT,
     };
+    const token = await new AccessStore().token();
+    if (token) {
+      env.OP_SERVICE_ACCOUNT_TOKEN = token;
+      delete env.OP_ACCOUNT;
+      delete env.OP_CONNECT_HOST;
+      delete env.OP_CONNECT_TOKEN;
+      delete env.OP_BIOMETRIC_UNLOCK_ENABLED;
+    }
+    return env;
   }
 }
 

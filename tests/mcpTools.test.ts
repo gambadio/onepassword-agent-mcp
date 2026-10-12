@@ -9,10 +9,12 @@ import { runtimeInfo } from "../src/version.js";
 import { PolicyService } from "../src/policy.js";
 import { loadOrCreateKey } from "../src/cryptoBox.js";
 import { fixture } from "./fixtures.js";
+import { CAPTURE_TTL_MS } from "../src/clipboardCapture.js";
+import { OpCli, ItemWriteError } from "../src/opCli.js";
 
-async function connect(t: Parameters<typeof fixture>[0]) {
+async function connect(t: Parameters<typeof fixture>[0], options: Parameters<typeof createMcpServer>[0] = {}) {
   const f = await fixture(t);
-  const server = createMcpServer();
+  const server = createMcpServer(options);
   const client = new Client({ name: "regression", version: "1" });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -295,4 +297,161 @@ test("auto approval reconciliation excludes fields added after the agent's save"
   assert.equal(retried.approvalStatus, "approved");
   assert.deepEqual(retried.approvedFields, ["notesPlain"]);
   assert.deepEqual((await f.store.load()).grants.map(grant => grant.kind), ["secure_note"]);
+});
+
+async function clipboardFixture(t: Parameters<typeof fixture>[0], original = "  SYNTHETIC-CLIPBOARD-🔑\r\nsecret\n") {
+  const state = { text: original, reads: 0, clears: 0, now: Date.now(), failClear: false };
+  const f = await connect(t, { captureClock: () => state.now, clipboard: {
+    readText: async () => { state.reads++; return state.text; },
+    clearIfUnchanged: async expected => {
+      state.clears++;
+      if (state.failClear) throw new Error(original);
+      if (state.text !== expected) return "changed";
+      state.text = "";
+      return "cleared";
+    },
+  } });
+  await f.store.update(file => { file.settings.allowClipboardSave = true; });
+  const capture = async (extra: Record<string, unknown> = {}) => {
+    const response = await f.client.callTool({ name: "save_secret_from_clipboard", arguments: {
+      title: "Synthetic clipboard fixture", requestId: "clipboard-request", category: "password", ...extra,
+    } });
+    const text = (response.content as Array<{ text: string }>).map(content => content.text).join("");
+    assert.equal(text.includes(original), false);
+    assert.equal(text.includes("SYNTHETIC-CLIPBOARD"), false);
+    const result = JSON.parse(text);
+    return { ...result, isError: Boolean(response.isError) };
+  };
+  return { ...f, state, capture, original };
+}
+
+for (const category of ["login", "password", "api_credential", "secure_note"]) {
+  test(`clipboard MCP saves exact ${category} content with metadata-only schema and result`, async t => {
+    const f = await clipboardFixture(t);
+    const response = await f.capture({ category, username: "fixture-user", url: "https://fixture.test" });
+    assert.equal(response.ok, true);
+    assert.equal(response.verified, true);
+    assert.equal(response.clipboardStatus, "cleared");
+    assert.equal(response.reusedCapture, false);
+    const item = await f.op.getItem(response.itemId, response.vaultId, true);
+    const id = category === "secure_note" ? "notesPlain" : category === "api_credential" ? "credential" : "password";
+    assert.equal(item.fields!.find(field => field.id === id)!.value, f.original);
+    const policy = JSON.stringify(await f.store.load());
+    assert.equal(policy.includes("SYNTHETIC-CLIPBOARD"), false);
+    assert.equal(JSON.stringify(await f.calls()).includes("SYNTHETIC-CLIPBOARD"), false);
+    const tool = (await f.client.listTools()).tools.find(tool => tool.name === "save_secret_from_clipboard")!;
+    assert.equal(tool.inputSchema.properties!.password, undefined);
+    assert.equal(tool.inputSchema.properties!.notes, undefined);
+    assert.ok(tool.inputSchema.required!.includes("requestId"));
+  });
+}
+
+for (const disabled of ["allowAgentItemCreate", "allowClipboardSave"] as const) {
+  test(`clipboard MCP checks ${disabled} before reading clipboard`, async t => {
+    const f = await clipboardFixture(t);
+    await f.store.update(file => { file.settings[disabled] = false; });
+    const result = await f.capture();
+    assert.equal(result.isError, true);
+    assert.equal(f.state.reads, 0);
+    assert.equal(f.state.clears, 0);
+    assert.equal((await f.store.load()).operations!.length, 0);
+  });
+}
+
+test("clipboard retries reconcile ambiguous saves without reading newly copied data", async t => {
+  const f = await clipboardFixture(t);
+  await f.mode("lost-output");
+  const failed = await f.capture();
+  assert.equal(failed.isError, true);
+  assert.equal(failed.verified, false);
+  f.state.text = "DIFFERENT-SYNTHETIC-VALUE";
+  await f.mode("valid");
+  const saved = await f.capture();
+  assert.equal(saved.verified, true);
+  assert.equal(saved.reusedCapture, true);
+  assert.equal(f.state.text, "DIFFERENT-SYNTHETIC-VALUE");
+  assert.equal(f.state.reads, 1);
+  assert.equal((await f.calls()).filter(call => call.args[1] === "create").length, 1);
+});
+
+test("clipboard MCP rejects expired retries and metadata changes without reading clipboard", async t => {
+  const f = await clipboardFixture(t);
+  await f.capture();
+  assert.equal((await f.capture({ title: "different metadata" })).isError, true);
+  f.state.now += CAPTURE_TTL_MS + 1;
+  const expired = await f.capture();
+  assert.equal(expired.isError, true);
+  assert.match(expired.error, /expired/);
+  assert.equal(f.state.reads, 1);
+  assert.equal((await f.calls()).filter(call => call.args[1] === "create").length, 1);
+});
+
+test("clipboard MCP reports clear failure independently from a verified save", async t => {
+  const f = await clipboardFixture(t);
+  f.state.failClear = true;
+  const saved = await f.capture();
+  assert.equal(saved.verified, true);
+  assert.equal(saved.clipboardStatus, "clear_failed");
+  assert.ok(saved.clipboardWarning);
+});
+
+test("clipboard MCP never exposes arbitrary CLI error messages", async t => {
+  const f = await clipboardFixture(t);
+  t.mock.method(OpCli.prototype, "createSecretItem", async () => { throw new ItemWriteError(f.original, {
+    operationId: f.original, vaultId: f.original, itemId: f.original, created: "unknown", verified: false,
+  }); });
+  const failed = await f.capture();
+  assert.equal(failed.isError, true);
+  assert.equal(failed.verified, false);
+  assert.equal((await f.store.load()).audit.length, 0);
+});
+
+test("clipboard auto approval uses submitted metadata, never returned CLI labels", async t => {
+  const f = await clipboardFixture(t);
+  await f.store.update(state => { state.settings.autoApproveAgentItems = true; });
+  const original = OpCli.prototype.createSecretItem;
+  t.mock.method(OpCli.prototype, "createSecretItem", async function(this: OpCli, ...args: Parameters<typeof original>) {
+    const saved = await original.apply(this, args);
+    saved.fields = saved.fields?.map(field => ({ ...field, label: f.original }));
+    return saved;
+  });
+  const saved = await f.capture();
+  assert.equal(saved.approved, true);
+  assert.deepEqual(saved.approvedFields, ["password"]);
+  assert.equal(JSON.stringify(await f.store.load()).includes("SYNTHETIC-CLIPBOARD"), false);
+});
+
+test("clipboard concurrent saves capture once and create once", async t => {
+  const f = await clipboardFixture(t);
+  const results = await Promise.all([f.capture(), f.capture()]);
+  assert.equal(results[0].itemId, results[1].itemId);
+  assert.equal(f.state.reads, 1);
+  assert.equal((await f.calls()).filter(call => call.args[1] === "create").length, 1);
+});
+
+test("status exposes clipboard policy without reading clipboard", async t => {
+  const f = await clipboardFixture(t);
+  const response = await f.client.callTool({ name: "onepassword_status", arguments: {} });
+  assert.equal(JSON.parse((response.content as Array<{ text: string }>)[0].text).settings.allowClipboardSave, true);
+  assert.equal(f.state.reads, 0);
+});
+
+test("clipboard retries cannot move a snapshot into another service account's identically named vault", async t => {
+  const f = await clipboardFixture(t);
+  await f.capture();
+  t.mock.method(OpCli.prototype, "listVaults", async () => [{ id: "other-account-vault", name: "MCPVAULT" }]);
+  const retried = await f.capture();
+  assert.equal(retried.isError, true);
+  assert.match(retried.error, /metadata/);
+  assert.equal(f.state.reads, 1);
+  assert.equal((await f.calls()).filter(call => call.args[1] === "create").length, 1);
+});
+
+test("clipboard text is not captured while its destination vault is unavailable", async t => {
+  const f = await clipboardFixture(t);
+  t.mock.method(OpCli.prototype, "listVaults", async () => []);
+  const failed = await f.capture();
+  assert.equal(failed.isError, true);
+  assert.equal(failed.captured, false);
+  assert.equal(f.state.reads, 0);
 });

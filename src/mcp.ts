@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { pathToFileURL } from "node:url";
+import { isMain } from "./isMain.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createMcpServer } from "./mcpTools.js";
 
@@ -10,7 +10,7 @@ export async function startMcp(): Promise<void> {
   console.error("1Password local paste MCP running on stdio.");
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+if (isMain(import.meta.url)) {
   startMcp().catch((error) => {
     console.error(error);
     process.exit(1);

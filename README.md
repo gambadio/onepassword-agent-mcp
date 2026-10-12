@@ -10,11 +10,13 @@ Local MCP access to approved 1Password items and profile data for AI agents.
 
 Agents receive encrypted local handles, not plaintext 1Password secrets. At the moment of copy or paste, the MCP resolves the selected field locally through the 1Password CLI and sends it to the OS clipboard or active app.
 
+Agents can also **save copied secrets without seeing them**: click a website's Copy button, then call `save_secret_from_clipboard` with metadata only. The local process captures and saves the value into 1Password. The redesigned console includes a dedicated **Permissions** view for clipboard saves, automatic approval, and unattended access.
+
 The repo contains no personal 1Password data. Every install connects to that user's own 1Password CLI and local approval policy.
 
 > Not affiliated with or endorsed by 1Password.
 
-![Agent vault drag flow](docs/screenshots/mcpvault-workbench.svg)
+![Local agent vault dashboard](docs/screenshots/dashboard-vault.png)
 
 ## How It Works
 
@@ -167,7 +169,7 @@ When agents are allowed to create new credentials, those items are saved into `M
 
 ### Automatically Approve Agent-Created Items
 
-Under **Advanced local settings**, enable **Automatically approve items agents create**, then click **Save Settings**. This option defaults to off. Agent item creation must also be enabled.
+Under **Permissions**, enable **Automatically approve items agents create**, then click **Save Settings**. This option defaults to off. Agent item creation must also be enabled.
 
 When enabled, a verified `save_secret_item` automatically approves every supported field of the new item in the configured agent vault, including credit-card CVV and PIN. The agent can use the resulting encrypted handles immediately. Existing items and items copied or moved in through the admin console still need manual approval.
 
@@ -184,6 +186,49 @@ Changes apply to subsequent new saves without restarting the MCP server. Add `--
 Automatic approvals use `allowedSites` when provided, otherwise the saved item's website. An empty list or an item without a website allows all sites. `approveForAgents: false` skips approval for that save. With automatic approval off, `approveForAgents: true` retains the existing single-field approval behavior, using `approveField` when supplied and allowing all sites unless `allowedSites` is provided. With automatic approval on, `approveField` does not narrow the set of approved fields.
 
 ## Client Setup
+
+### Save From The Browser Or Selected Text
+
+In **Permissions**, enable agent item creation and clipboard saves, then save settings. Optionally enable automatic approval if agents should be able to use new items immediately.
+
+1. In a browser, click the secret's **Copy** button, or select text in a local app and use Copy. The agent should perform that action without reading the field, clipboard, DOM value, or a screenshot that reveals it.
+2. Call the local tool with metadata only:
+
+```json
+{
+  "title": "Example account",
+  "requestId": "example-signup-unique-id",
+  "category": "login",
+  "url": "https://example.com",
+  "username": "my-login"
+}
+```
+
+Use those arguments with `save_secret_from_clipboard`. Supported categories are `login`, `password`, `api_credential`, and `secure_note`. Text is preserved exactly, including spaces and newlines. The tool runs on the computer hosting this MCP server and reads that computer's clipboard; a remote browser's clipboard is a different clipboard.
+
+The app encrypts a retry snapshot locally, usable for 15 minutes, passes plaintext only through the local CLI's stdin, and verifies the stored item. The response contains save and approval metadata, never the copied text; use the find/list tools for approved encrypted handles. Expired ciphertext is removed while the process runs or on the next capture after downtime; a metadata-only record prevents reusing an old request ID. Clipboard clearing rechecks that the value has not changed and is best effort; check the returned cleanup status. Clipboard managers may retain their own history.
+
+Reuse the same `requestId` and metadata to retry. A retry uses the original encrypted capture even if the clipboard changes. An expired capture fails closed instead of capturing unrelated text; inspect the previous operation before intentionally starting a new request. Metadata such as titles, usernames, and URLs remains visible to the model: never put a secret in those fields. `save_secret_item` remains available for values already in context; it cannot undo that exposure.
+
+### Unattended Access
+
+![Permissions and unattended access](docs/screenshots/dashboard-permissions.png)
+
+The **Permissions → Unattended access** card accepts a 1Password service-account token directly in the local dashboard. Create the token in [1Password's service-account settings](https://www.1password.dev/service-accounts/get-started/) with access only to your dedicated agent vault. Grant `read_items`, plus `write_items` for saves. Paste it into the password field and save it there, rather than sending it in chat.
+
+The app encrypts the token locally in `~/.onepassword-mcp/access.json`, never returns it to the dashboard or MCP client, and supplies it only to the CLI process environment. Changes apply to later CLI calls without restarting. **Test connection** checks vault visibility; it does not write a test item or certify write permissions. Disable switches back to desktop authentication; remove deletes the local credential. Revoke the token in 1Password if you want to invalidate it everywhere. In-flight operations may finish after a toggle.
+
+An externally configured `OP_SERVICE_ACCOUNT_TOKEN` takes precedence; the dashboard reports that mode, and removing a local token cannot disable the environment credential. Service accounts cannot access built-in Personal/Private/Employee vaults. While scoped unattended access is active, the console can only see vaults that token can access; disable it before copying items from other desktop-account vaults.
+
+There are three separate permission layers:
+
+| Permission | Where to control it |
+| --- | --- |
+| Creating items, clipboard capture, automatic field approval | This console's Permissions view; approvals persist locally |
+| Repeated 1Password unlock/biometric prompts | Use the supported service-account path for unattended work |
+| Confirmation before an MCP tool call | Your MCP client's own permission settings |
+
+This app does not change your MCP client's tool confirmations or bypass 1Password's desktop unlock protections. See [1Password's desktop integration security model](https://www.1password.dev/cli/app-integration-security/) and [service-account CLI documentation](https://www.1password.dev/cli/reference/management-commands/service-account/).
 
 The setup CLI prints a dry run by default. It detects Claude Code, Claude Desktop, Codex, VS Code, Xcode coding agents, and Raycast AI when they are installed:
 
@@ -341,6 +386,7 @@ This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items.
 - `paste_secret`: resolve a handle, copy it, paste into the active app, and return no plaintext.
 - `clear_secret_clipboard`: clear the clipboard.
 - `save_secret_item`: save a new login, password, API credential, secure note, or credit card into `MCPVAULT` when the local save setting is enabled. Returns verification and approval status, plus `approvedFields` (and the first field as `approvedField` for compatibility). Automatic approval follows the local `autoApproveAgentItems` setting.
+- `save_secret_from_clipboard`: save exact locally copied text with metadata-only tool arguments, encrypted retry capture, verification, and optional automatic approval. Requires both clipboard-save and item-creation permissions.
 - `get_profile_data`: return user-defined profile data allowed for the current site.
 - `find_passwords_for_site`, `list_approved_passwords`, `copy_password`, `paste_password`, and `clear_password_clipboard`: compatibility aliases.
 - `admin_ui_info`: return the approval console URL.
@@ -349,7 +395,7 @@ This deletes `~/.onepassword-mcp`. It does not delete 1Password vaults or items.
 
 Protected:
 
-- Passwords are not stored by this project.
+- Saved item secrets stay in 1Password. Clipboard saves use temporary encrypted retry captures; an optional unattended service-account token is encrypted locally.
 - MCP copy/paste tools never return plaintext 1Password secret fields.
 - Handles and stored 1Password secret references are encrypted locally.
 - Disabled or deleted approvals invalidate old handles.
@@ -363,6 +409,7 @@ Still sensitive:
 - The OS clipboard briefly contains the plaintext field value.
 - The active app receives the field value when paste is triggered.
 - A local process with clipboard access may observe copied secrets.
+- The encryption key is local to the same user account. A process that can read both the key and encrypted files can decrypt them.
 - With desktop CLI integration, the local 1Password CLI session may have broader vault access than the MCP exposes.
 - `get_profile_data` returns plaintext profile values you explicitly added in the admin UI.
 
@@ -377,6 +424,8 @@ Default state location:
 ```text
 ~/.onepassword-mcp/policy.json
 ~/.onepassword-mcp/key.bin
+~/.onepassword-mcp/access.json       # optional encrypted service-account token
+~/.onepassword-mcp/clipboard-captures/ # expiring encrypted clipboard retry records
 ```
 
 Use a different state directory:

@@ -34,6 +34,45 @@ const menuBarLoginToggle = document.querySelector("#menuBarLoginToggle");
 const menuBarLaunchBtn = document.querySelector("#menuBarLaunchBtn");
 const menuBarUpdateBtn = document.querySelector("#menuBarUpdateBtn");
 
+const accessForm = document.querySelector("#accessForm");
+const accessToken = document.querySelector("#accessToken");
+const accessEnabled = document.querySelector("#accessEnabled");
+const accessMessage = document.querySelector("#accessMessage");
+let currentAccess;
+let accessBusy = false;
+let accessRevision = 0;
+
+const views = {
+  vault: ["Vault", "Your vault. Your rules.", "Give your agents the access they need. Keep your secrets in 1Password."],
+  permissions: ["Permissions", "Make room for autonomy.", "Set clear boundaries once, then let your agents get to work."],
+  profile: ["Profile", "The details worth sharing.", "Choose the everyday information your agents can read directly."],
+  activity: ["Activity", "A clear view of what happened.", "Review recent local operations. Secret values are never included."],
+};
+function navigate() {
+  const key = Object.hasOwn(views, location.hash.slice(1)) ? location.hash.slice(1) : "vault";
+  const [label, title, description] = views[key];
+  for (const section of document.querySelectorAll("[data-view]")) section.hidden = section.dataset.view !== key;
+  for (const link of document.querySelectorAll("[data-nav]")) {
+    if (link.dataset.nav === key) link.setAttribute("aria-current", "page");
+    else link.removeAttribute("aria-current");
+  }
+  document.querySelector("#currentViewLabel").textContent = label;
+  document.querySelector("#viewTitle").textContent = title;
+  document.querySelector("#viewDescription").textContent = description;
+  document.querySelector("#permissionsShortcut").hidden = key !== "vault";
+  document.title = `${label} · 1Password Agent MCP`;
+}
+window.addEventListener("hashchange", () => {
+  navigate();
+  document.querySelector("#mainContent").focus({ preventScroll: true });
+  window.scrollTo({ top: 0, behavior: "instant" });
+});
+navigate();
+accessForm.addEventListener("submit", saveAccess);
+accessEnabled.addEventListener("change", () => changeAccess("PATCH", { enabled: accessEnabled.checked }));
+document.querySelector("#accessRemoveBtn").addEventListener("click", () => changeAccess("DELETE"));
+document.querySelector("#accessTestBtn").addEventListener("click", testAccess);
+
 let sourceRequest = 0;
 let mcpRequest = 0;
 let refreshRequest = 0;
@@ -116,11 +155,13 @@ async function refresh() {
   const request = ++refreshRequest;
   sourceRequest += 1;
   mcpRequest += 1;
-  const [status, grants, profile, menuBar] = await Promise.all([
+  const accessVersion = accessRevision;
+  const [status, grants, profile, menuBar, access] = await Promise.all([
     api("/api/status"),
     api("/api/grants"),
     api("/api/profile"),
     api("/api/menubar"),
+    api("/api/access").catch(() => null),
   ]);
   if (request !== refreshRequest) return;
   currentStatus = status;
@@ -131,6 +172,7 @@ async function refresh() {
   renderGrants(grants);
   renderProfile(profile);
   renderMenuBar(menuBar);
+  if (accessVersion === accessRevision) renderAccess(access);
   renderAudit(status.audit);
   await Promise.all([loadSourceCandidates(), loadMcpCandidates()]);
 }
@@ -144,6 +186,14 @@ function renderStatus(status) {
       ? `1Password CLI ${cli.version || ""} authorized`
       : `1Password CLI ${cli.version || ""} authorization failed: ${cli.authError || "unlock 1Password and refresh"}`;
   statusLine.textContent = `${cliText}. ${status.enabledGrants}/${status.grants} entries allowed. Agent creation: ${status.settings.allowAgentItemCreate ? "enabled" : "disabled"}. Auto approval: ${status.settings.autoApproveAgentItems ? "enabled" : "disabled"}.`;
+
+  document.querySelector("#connectionState").textContent = cli.authenticated ? "Connected locally" : "Needs attention";
+  document.querySelector("#connectionState").className = `connectionState ${cli.authenticated ? "connected" : "disconnected"}`;
+  document.querySelector("#approvedMetric").textContent = String(status.enabledGrants || 0);
+  document.querySelector("#vaultMetric").textContent = mcpVault.name || status.settings.mcpVaultName;
+  document.querySelector("#vaultMetricDetail").textContent = mcpVault.exists ? "Connected to 1Password" : "Waiting for connection";
+  document.querySelector("#captureMetric").textContent = status.settings.allowClipboardSave && status.settings.allowAgentItemCreate ? "On" : "Off";
+  document.querySelector("#accessVaultName").textContent = status.settings.mcpVaultName || "MCPVAULT";
 
   mcpVaultNameLabel.textContent = mcpVault.name || status.settings.mcpVaultName || "MCPVAULT";
   createVaultBtn.textContent = `Create ${mcpVault.name || "MCPVAULT"}`;
@@ -170,7 +220,83 @@ function renderSettings(settings) {
   settingsForm.clipboardClearSeconds.value = settings.clipboardClearSeconds || 20;
   settingsForm.allowPasteWithoutSite.checked = Boolean(settings.allowPasteWithoutSite);
   settingsForm.allowAgentItemCreate.checked = Boolean(settings.allowAgentItemCreate);
+  settingsForm.allowClipboardSave.checked = Boolean(settings.allowClipboardSave);
   settingsForm.autoApproveAgentItems.checked = Boolean(settings.autoApproveAgentItems);
+}
+
+function renderAccess(access) {
+  currentAccess = access;
+  const environment = access?.source === "environment";
+  const saved = access?.source === "local" && access.configured;
+  document.querySelector("#accessStatus").textContent = !access ? "Access status unavailable"
+    : environment ? "Managed by environment"
+    : saved ? (access.enabled ? "Unattended access on" : "Saved token paused")
+    : "Desktop authorization";
+  document.querySelector("#accessDescription").textContent = !access ? "Use Refresh to retry."
+    : environment ? "A service account is supplied by the server environment. Update or remove it there."
+    : saved ? (access.enabled ? "Using your encrypted local service account." : "Your encrypted token is saved. 1Password desktop authorization is active.")
+    : "1Password may ask you to unlock or approve access.";
+  accessForm.hidden = environment;
+  document.querySelector("#savedAccessControls").hidden = !access?.configured;
+  accessEnabled.closest("label").hidden = environment;
+  accessEnabled.checked = Boolean(access?.enabled);
+  document.querySelector("#accessRemoveBtn").hidden = !saved;
+  document.querySelector("#accessSaveBtn").textContent = saved ? "Replace encrypted token" : "Save encrypted token";
+  setAccessBusy(accessBusy);
+}
+
+function setAccessBusy(busy) {
+  accessBusy = busy;
+  for (const control of document.querySelectorAll(".accessPanel button, .accessPanel input")) control.disabled = busy || !currentAccess;
+}
+
+function accessFeedback(text, isError = false) {
+  accessMessage.textContent = text;
+  accessMessage.classList.toggle("error", isError);
+}
+
+async function saveAccess(event) {
+  event.preventDefault();
+  if (accessBusy) return;
+  const token = accessToken.value;
+  // Clear before starting the request; never render tokens or backend error bodies.
+  accessToken.value = "";
+  await changeAccess("PUT", { token });
+}
+
+async function changeAccess(method, body) {
+  if (accessBusy) return;
+  accessRevision += 1;
+  setAccessBusy(true);
+  accessFeedback("Updating access…");
+  try {
+    const access = await api("/api/access", { method, ...(body ? { body: JSON.stringify(body) } : {}) });
+    renderAccess(access);
+    const feedback = method === "PUT" ? "Token encrypted and saved."
+      : method === "DELETE" ? "Saved token removed. Desktop authorization is active."
+      : access.enabled ? "Unattended access enabled." : "Unattended access paused.";
+    accessFeedback(feedback);
+    try { await refresh(); }
+    catch { accessFeedback(`${feedback} Status refresh failed; use Refresh to retry.`); }
+  } catch {
+    renderAccess(currentAccess);
+    accessFeedback(method === "PUT" ? "The token could not be saved. Check the token and its vault permissions, then paste it again."
+      : "Access could not be updated. Use Refresh to check the current configuration.", true);
+  } finally { setAccessBusy(false); }
+}
+
+async function testAccess() {
+  if (accessBusy) return;
+  setAccessBusy(true);
+  accessFeedback("Testing vault access…");
+  try {
+    const result = await api("/api/access/test", { method: "POST", body: "{}" });
+    accessFeedback(result.ok && result.vaultVisible
+      ? "Vault is reachable. Write permission was not tested."
+      : "The vault could not be reached. Check the service account and its vault permissions.", !result.ok || !result.vaultVisible);
+  } catch {
+    accessFeedback("Connection test failed. Check your configuration and try again.", true);
+  } finally { setAccessBusy(false); }
 }
 
 function renderMenuBar(status) {
@@ -1005,6 +1131,7 @@ async function saveSettings(event) {
         clipboardClearSeconds: Number(settingsForm.clipboardClearSeconds.value),
         allowPasteWithoutSite: settingsForm.allowPasteWithoutSite.checked,
         allowAgentItemCreate: settingsForm.allowAgentItemCreate.checked,
+        allowClipboardSave: settingsForm.allowClipboardSave.checked,
         autoApproveAgentItems: settingsForm.autoApproveAgentItems.checked,
       }),
     });

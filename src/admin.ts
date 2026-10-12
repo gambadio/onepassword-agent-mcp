@@ -2,7 +2,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Server } from "node:http";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { isMain } from "./isMain.js";
 import {
   adminShutdownHeader,
   adminShutdownTokenMatches,
@@ -26,6 +26,7 @@ import { StateStore } from "./state.js";
 import type { AuditEvent, CandidateGroup, CandidatePayload, OpVaultSummary, PolicyFile, ProfileKind } from "./types.js";
 
 import { runtimeInfo } from "./version.js";
+import { AccessStore } from "./access.js";
 
 const store = new StateStore();
 const policyService = new PolicyService(store);
@@ -37,7 +38,10 @@ interface AdminAppOptions {
 
 export async function createAdminApp(options: AdminAppOptions = {}) {
   const app = express();
+  app.disable("x-powered-by");
+  app.use(localOriginGuard);
   app.use(express.json({ limit: "1mb" }));
+  app.use("/api", (_req, res, next) => { res.setHeader("Cache-Control", "no-store"); next(); });
 
   app.get("/api/health", (_req, res) => {
     res.setHeader("Cache-Control", "no-store");
@@ -104,6 +108,36 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
     res.json(file.settings);
   });
 
+  const access = new AccessStore();
+  app.get("/api/access", async (_req, res) => { res.json(await access.status()); });
+  app.put("/api/access", async (req, res) => {
+    const result = await access.save(req.body.token);
+    await store.addAudit({ type: "settings.updated", message: "Saved encrypted unattended access credential" });
+    res.json(result);
+  });
+  app.patch("/api/access", async (req, res) => {
+    if (typeof req.body.enabled !== "boolean") throw new Error("enabled must be true or false.");
+    const result = await access.setEnabled(req.body.enabled);
+    await store.addAudit({ type: "settings.updated", message: req.body.enabled ? "Enabled unattended access" : "Disabled saved unattended access" });
+    res.json(result);
+  });
+  app.delete("/api/access", async (_req, res) => {
+    const result = await access.remove();
+    await store.addAudit({ type: "settings.updated", message: "Removed saved unattended access credential" });
+    res.json(result);
+  });
+  app.post("/api/access/test", async (_req, res) => {
+    try {
+      const file = await store.load();
+      const vaults = await new OpCli(file.settings).listVaults();
+      const vaultVisible = describeMcpVault(file, vaults).exists;
+      res.json({ ok: vaultVisible, vaultVisible, canWrite: "not_tested",
+        ...(!vaultVisible ? { error: "The configured agent vault is not visible to this account." } : {}) });
+    } catch {
+      res.json({ ok: false, vaultVisible: false, canWrite: "not_tested", error: "Unable to access 1Password. Check the token, its expiry, and agent-vault permissions." });
+    }
+  });
+
   app.put("/api/settings", async (req, res) => {
     const patch = req.body as Record<string, unknown>;
     const updated = await store.update((file) => {
@@ -122,6 +156,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
         autoPasteByDefault: booleanValue(patch.autoPasteByDefault, file.settings.autoPasteByDefault),
         allowPasteWithoutSite: booleanValue(patch.allowPasteWithoutSite, file.settings.allowPasteWithoutSite),
         allowAgentItemCreate: booleanValue(patch.allowAgentItemCreate, file.settings.allowAgentItemCreate),
+        allowClipboardSave: booleanValue(patch.allowClipboardSave, file.settings.allowClipboardSave),
         autoApproveAgentItems: booleanValue(patch.autoApproveAgentItems, file.settings.autoApproveAgentItems),
       };
       file.audit.unshift({
@@ -443,6 +478,10 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
   });
 
   app.use((error: Error, _req: Request, res: Response, _next: NextFunction) => {
+    if ("type" in error && error.type === "entity.parse.failed") {
+      res.status(400).json({ ok: false, error: "Invalid JSON request." });
+      return;
+    }
     res.status(400).json({ ok: false, error: error.message, ...(error instanceof ItemWriteError ? error.outcome : {}) });
   });
 
@@ -527,6 +566,27 @@ function closeAdminServer(server: Server): Promise<void> {
     }, 1_500);
     server.close((error) => finish(error || undefined));
   });
+}
+
+function localOriginGuard(req: Request, res: Response, next: NextFunction) {
+  const host = req.hostname;
+  if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(host) && !process.env.ONEPASSWORD_MCP_ADMIN_TOKEN) {
+    res.status(403).json({ error: "Local console requires a loopback hostname." });
+    return;
+  }
+  const origin = req.header("origin");
+  if ((origin && origin !== `${req.protocol}://${req.get("host")}`) || req.header("sec-fetch-site") === "cross-site") {
+    res.status(403).json({ error: "Cross-origin console requests are not allowed." });
+    return;
+  }
+  if (["POST", "PUT", "PATCH"].includes(req.method) && req.path !== "/api/runtime/stop" && !req.is("application/json")) {
+    res.status(415).json({ error: "Use application/json for console changes." });
+    return;
+  }
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  next();
 }
 
 function adminGuard(req: Request, res: Response, next: NextFunction) {
@@ -648,7 +708,7 @@ async function publicGrant(id: string) {
   return grants.find((grant) => grant.id === id);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] || "").href) {
+if (isMain(import.meta.url)) {
   startAdmin().catch((error) => {
     console.error(error);
     process.exit(1);

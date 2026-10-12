@@ -1,0 +1,33 @@
+{
+  "manifest_version": "0.3",
+  "name": "onepassword-agent-mcp",
+  "display_name": "1Password Agent MCP",
+  "version": "0.3.8",
+  "description": "Save and use approved 1Password secrets locally without exposing plaintext to AI agents.",
+  "long_description": "Local stdio MCP bridge with encrypted handles, clipboard capture, and a local approval dashboard. Requires the 1Password CLI (op) installed and authorized on the same computer. Copy, paste, and clipboard capture act on that computer. This bundle does not install 1Password or configure unattended access. Not affiliated with or endorsed by 1Password.",
+  "author": {
+    "name": "gambadio",
+    "url": "https://github.com/gambadio"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gambadio/onepassword-agent-mcp.git"
+  },
+  "homepage": "https://github.com/gambadio/onepassword-agent-mcp",
+  "documentation": "https://github.com/gambadio/onepassword-agent-mcp/blob/main/docs/USER_GUIDE.md",
+  "support": "https://github.com/gambadio/onepassword-agent-mcp/issues",
+  "server": {
+    "type": "node",
+    "entry_point": "dist/src/mcp.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/dist/src/mcp.js"]
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": { "node": ">=20" }
+  },
+  "keywords": ["1password", "password-manager", "security", "local", "clipboard"],
+  "license": "MIT"
+}

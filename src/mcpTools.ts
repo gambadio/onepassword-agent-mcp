@@ -2,7 +2,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { loadOrCreateKey } from "./cryptoBox.js";
 import { createItemTemplate, ItemWriteError, OpCli, verifyItemTemplate } from "./opCli.js";
-import { clearClipboard, pasteFromClipboard, setClipboard } from "./paste.js";
+import { clearClipboard, pasteFromClipboard, setClipboard, type ClipboardReader } from "./paste.js";
+import { ClipboardCapture, ClipboardCaptureError } from "./clipboardCapture.js";
+import type { CreateSecretItemInput } from "./types.js";
+import { AccessStore } from "./access.js";
 import { PolicyService } from "./policy.js";
 import { StateStore } from "./state.js";
 import { runtimeInfo } from "./version.js";
@@ -18,7 +21,13 @@ function jsonResponse(value: unknown) {
   return textResponse(JSON.stringify(value, null, 2));
 }
 
-export function createMcpServer(): McpServer {
+type SaveInput = Omit<CreateSecretItemInput, "vault"> & {
+  approveForAgents?: boolean;
+  allowedSites?: string[];
+  approveField?: string;
+};
+
+export function createMcpServer(options: { clipboard?: ClipboardReader; captureClock?: () => number } = {}): McpServer {
   const server = new McpServer({
     name: "onepassword-agent-mcp",
     version: runtimeInfo.version,
@@ -26,6 +35,7 @@ export function createMcpServer(): McpServer {
 
   const policy = new PolicyService();
   const store = new StateStore();
+  const clipboardCapture = new ClipboardCapture(options.clipboard, options.captureClock);
 
   server.registerTool(
     "onepassword_status",
@@ -67,6 +77,7 @@ export function createMcpServer(): McpServer {
       }
       return jsonResponse({
         runtime: runtimeInfo,
+        access: await new AccessStore().status(),
         grants: grants.length,
         enabledGrants: grants.filter((grant) => grant.enabled).length,
         profileFields: file.profile.filter((entry) => entry.enabled).length,
@@ -75,6 +86,7 @@ export function createMcpServer(): McpServer {
           mcpVaultName: file.settings.mcpVaultName,
           allowPasteWithoutSite: file.settings.allowPasteWithoutSite,
           allowAgentItemCreate: file.settings.allowAgentItemCreate,
+          allowClipboardSave: file.settings.allowClipboardSave,
           autoApproveAgentItems: file.settings.autoApproveAgentItems,
           clipboardClearSeconds: file.settings.clipboardClearSeconds,
         },
@@ -263,34 +275,11 @@ export function createMcpServer(): McpServer {
     },
   );
 
-  server.registerTool(
-    "save_secret_item",
-    {
-      title: "Save Secret Item To 1Password",
-      description:
-        "Create a new item in the configured MCPVAULT. Use this when the user asks the agent to save a new password, API credential, secure note, or credit-card entry. If local automatic approval is enabled, all supported fields are approved after verification. Secret values are sent to the local 1Password CLI through stdin, not command arguments.",
-      inputSchema: {
-        title: z.string().trim().min(1),
-        requestId: z.string().min(1).max(200).optional().describe("Stable ID for this save. Reuse on retries; use a new ID only for an intentional new item. Identical input is deduplicated when omitted."),
-        category: z.enum(["login", "password", "api_credential", "secure_note", "credit_card"]).default("login"),
-        url: z.string().optional(),
-        username: z.string().optional(),
-        password: z.string().optional(),
-        credential: z.string().optional(),
-        hostname: z.string().optional(),
-        notes: z.string().optional(),
-        cardholderName: z.string().optional(),
-        cardNumber: z.string().optional(),
-        verificationNumber: z.string().optional(),
-        expiry: z.string().optional().describe("Credit-card expiry in 1Password MONTH_YEAR format such as 2028/09."),
-        pin: z.string().optional(),
-        approveForAgents: z.boolean().optional().describe("Omit to follow local automatic approval settings. False skips approval for this save. True requests the primary field when automatic approval is off; when on, all supported fields are approved."),
-        allowedSites: z.array(z.string()).optional().describe("Allowed websites for approvals. Empty means all sites. If omitted, automatic approvals use the saved item's website; explicit single-field approvals allow all sites."),
-        approveField: z.string().optional().describe("Field id, label, or kind for an explicit single-field approval when automatic approval is off, such as password, credential, ccnum, or credit_card_number."),
-      },
-    },
-    async (input) => {
+  const saveSecretItem = async (input: SaveInput, clipboardOnly = false, expectedVault?: string) => {
       const file = await store.load();
+      if (clipboardOnly && !file.settings.allowClipboardSave) {
+        throw new Error("Saving from the clipboard is disabled in local settings.");
+      }
       if (!file.settings.allowAgentItemCreate) {
         throw new Error("Agent item creation is disabled in local settings.");
       }
@@ -306,6 +295,9 @@ export function createMcpServer(): McpServer {
         throw new Error(`Create ${file.settings.mcpVaultName} in the admin UI before agents save items.`);
       }
       const vault = mcpVault.id || mcpVault.name || file.settings.mcpVaultName;
+      if (expectedVault && vault !== expectedVault) {
+        throw new Error("The destination vault changed after clipboard capture. No new item was created.");
+      }
       const createInput = { ...input, vault };
       const key = await loadOrCreateKey();
       const template = createItemTemplate(createInput);
@@ -324,7 +316,7 @@ export function createMcpServer(): McpServer {
           created: created?.id ? true : "unknown", verified: false, itemId: created?.id, vaultId: vault,
         };
         return { ...jsonResponse({ ok: false, ...outcome, approvalStatus: "not_attempted",
-          error: error instanceof ItemWriteError ? error.message : "The saved item could not be verified. Check its identity before retrying.",
+          error: !clipboardOnly && error instanceof ItemWriteError ? error.message : "The saved item could not be verified. Check its identity before retrying.",
           note: "Retry with the same requestId and input to reconcile this operation. No secret values were returned." }), isError: true };
       }
 
@@ -362,7 +354,11 @@ export function createMcpServer(): McpServer {
             } else {
               // A reconciled save may now contain fields a human added later.
               // Automatic approval is limited to the fields the agent submitted.
-              const approvalItem = autoApprove ? {
+              // A clipboard save can only trust the metadata submitted by the caller;
+              // verified CLI field values must not become labels, usernames, or URLs.
+              const approvalItem = clipboardOnly ? {
+                ...template, id: created.id, vault: { id: vault, name: file.settings.mcpVaultName },
+              } : autoApprove ? {
                 ...created,
                 fields: created.fields?.filter(field => template.fields.some(expected =>
                   expected.id === field.id && (expected.section?.id || "") === (field.section?.id || ""))),
@@ -403,6 +399,97 @@ export function createMcpServer(): McpServer {
         approvedField: approvedFields[0], approvedFields, auditRecorded, warnings,
         note: "Secret values were saved, verified in 1Password, and were not returned.",
       });
+  };
+
+  server.registerTool(
+    "save_secret_item",
+    {
+      title: "Save Secret Item To 1Password",
+      description:
+        "Create a new item in the configured MCPVAULT. Use this when the user asks the agent to save a new password, API credential, secure note, or credit-card entry. If local automatic approval is enabled, all supported fields are approved after verification. Secret values are sent to the local 1Password CLI through stdin, not command arguments.",
+      inputSchema: {
+        title: z.string().trim().min(1),
+        requestId: z.string().min(1).max(200).optional().describe("Stable ID for this save. Reuse on retries; use a new ID only for an intentional new item. Identical input is deduplicated when omitted."),
+        category: z.enum(["login", "password", "api_credential", "secure_note", "credit_card"]).default("login"),
+        url: z.string().optional(),
+        username: z.string().optional(),
+        password: z.string().optional(),
+        credential: z.string().optional(),
+        hostname: z.string().optional(),
+        notes: z.string().optional(),
+        cardholderName: z.string().optional(),
+        cardNumber: z.string().optional(),
+        verificationNumber: z.string().optional(),
+        expiry: z.string().optional().describe("Credit-card expiry in 1Password MONTH_YEAR format such as 2028/09."),
+        pin: z.string().optional(),
+        approveForAgents: z.boolean().optional().describe("Omit to follow local automatic approval settings. False skips approval for this save. True requests the primary field when automatic approval is off; when on, all supported fields are approved."),
+        allowedSites: z.array(z.string()).optional().describe("Allowed websites for approvals. Empty means all sites. If omitted, automatic approvals use the saved item's website; explicit single-field approvals allow all sites."),
+        approveField: z.string().optional().describe("Field id, label, or kind for an explicit single-field approval when automatic approval is off, such as password, credential, ccnum, or credit_card_number."),
+      },
+    },
+    async (input) => await saveSecretItem(input),
+  );
+
+  server.registerTool(
+    "save_secret_from_clipboard",
+    {
+      title: "Save Clipboard Secret To 1Password",
+      description: "Copy the intended password or text with the browser or operating-system Copy action, then call this tool using metadata only. It captures local clipboard text without returning it, encrypts a retry snapshot for 15 minutes, clears the clipboard if still unchanged, and saves/verifies the value in MCPVAULT. Never read, quote, or pass the secret to this tool. Reuse the same requestId and metadata for retries. Requires clipboard saving and agent creation enabled in the dashboard.",
+      inputSchema: {
+        title: z.string().trim().min(1),
+        requestId: z.string().trim().min(1).max(200).describe("Required stable ID for this capture. Reuse it on every retry. After expiry, check the existing save before deliberately copying again with a new ID."),
+        category: z.enum(["login", "password", "api_credential", "secure_note"]).default("login"),
+        url: z.string().optional(),
+        username: z.string().optional(),
+        approveForAgents: z.boolean().optional().describe("Omit to follow dashboard automatic approval; false skips approval for this save."),
+        allowedSites: z.array(z.string()).optional(),
+        approveField: z.string().optional(),
+      },
+    },
+    async input => {
+      const file = await store.load();
+      if (!file.settings.allowAgentItemCreate || !file.settings.allowClipboardSave) {
+        return { ...jsonResponse({ ok: false, captured: false,
+          error: "Enable both agent item creation and clipboard saving in the dashboard before capturing a secret." }), isError: true };
+      }
+      try {
+        // Resolve the destination before touching the clipboard. A different
+        // service account can expose the same vault name with a different ID.
+        const vaults = await new OpCli(file.settings).listVaults();
+        const expected = file.settings.mcpVaultName.trim().toLowerCase();
+        const destination = vaults.find(vault =>
+          vault.name?.trim().toLowerCase() === expected || vault.id?.trim().toLowerCase() === expected);
+        if (!destination?.id) {
+          return { ...jsonResponse({ ok: false, captured: false,
+            error: "The configured agent vault is unavailable. Check 1Password access and create the vault before capturing." }), isError: true };
+        }
+        const captured = await clipboardCapture.use(input.requestId, {
+          ...input, account: file.settings.account, vault: destination.id,
+        }, async (secret, requestId) => {
+          const secretField = input.category === "secure_note" ? { notes: secret }
+            : input.category === "api_credential" ? { credential: secret } : { password: secret };
+          try {
+            const response = await saveSecretItem({ ...input, ...secretField, requestId }, true, destination.id);
+            // Defense in depth for malformed CLI responses that put a value into
+            // purported metadata such as an item ID, rather than a secret field.
+            return { ...response, content: response.content.map(entry => ({ ...entry,
+              text: JSON.stringify(JSON.parse(entry.text), (_key, value: unknown) =>
+                typeof value === "string" ? value.replaceAll(secret, "[redacted]") : value),
+            })) };
+          }
+          catch { return { ...jsonResponse({ ok: false, created: "unknown", verified: false,
+            error: "The clipboard save could not finish. Check local settings and 1Password access, then retry with the same requestId and metadata." }), isError: true }; }
+        });
+        const result = JSON.parse(captured.value.content[0].text);
+        return { ...jsonResponse({ ...result, captured: true, clipboardStatus: captured.clipboardStatus,
+          reusedCapture: captured.reusedCapture, captureExpiresAt: captured.captureExpiresAt,
+          ...(captured.clipboardStatus === "clear_failed" ? { clipboardWarning: "The snapshot is encrypted, but clipboard clearing failed. Clear the clipboard manually when safe." } : {}),
+        }), ...("isError" in captured.value && captured.value.isError ? { isError: true } : {}) };
+      } catch (error) {
+        return { ...jsonResponse({ ok: false, captured: "unknown", verified: false,
+          error: error instanceof ClipboardCaptureError ? error.message
+            : "The encrypted clipboard capture could not finish. Retry with the same requestId; do not start a replacement save blindly." }), isError: true };
+      }
     },
   );
 

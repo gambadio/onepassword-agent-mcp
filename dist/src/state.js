@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
     autoPasteByDefault: true,
     allowPasteWithoutSite: false,
     allowAgentItemCreate: false,
+    allowClipboardSave: false,
     autoApproveAgentItems: false,
     defaultVault: "",
     mcpVaultName: process.env.MCP_VAULT_NAME || "MCPVAULT",
@@ -33,6 +34,7 @@ export class StateStore {
             const parsed = JSON.parse(raw);
             const settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
             settings.autoApproveAgentItems = settings.autoApproveAgentItems === true;
+            settings.allowClipboardSave = settings.allowClipboardSave === true;
             if (!settings.mcpVaultName.trim()) {
                 settings.mcpVaultName = DEFAULT_SETTINGS.mcpVaultName;
             }
