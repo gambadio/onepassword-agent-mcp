@@ -37,10 +37,11 @@ The tag starts `.github/workflows/publish.yml`, which verifies the versions, tes
 
 Watch the release at [GitHub Actions](https://github.com/gambadio/onepassword-agent-mcp/actions/workflows/publish.yml). A failed workflow can be inspected and rerun there.
 
-## Local MCP Bundle for Smithery
+## Local MCP Bundle
 
-Smithery distributes local stdio servers as MCPB bundles. Keep `manifest.json` at
-the same version as `package.json`, `package-lock.json`, and `server.json`.
+MCPB packages the local stdio server for compatible desktop clients and bundle
+directories. Keep `manifest.json` at the same version as `package.json`,
+`package-lock.json`, and `server.json`.
 
 ```bash
 node scripts/build-mcpb.mjs
@@ -59,11 +60,19 @@ after building. Use `--output /path/to/server.mcpb` to choose another destinatio
 The npm cache defaults to a dedicated directory under the system temporary
 directory; `NPM_CONFIG_CACHE` overrides it.
 
-After testing the bundle's local stdio startup, an authenticated maintainer can
-publish it without exposing a remote password server:
+After testing the bundle's local stdio startup, attach it to the matching GitHub
+Release. Compare the uploaded asset's SHA-256 with the build output:
 
 ```bash
-smithery mcp publish ./dist/onepassword-agent-mcp-VERSION.mcpb -n gambadio/onepassword-agent-mcp
+gh release upload vVERSION ./dist/onepassword-agent-mcp-VERSION.mcpb
+```
+
+Smithery also documents a local-bundle distribution path, separate from its
+remote HTTP publishing form. An authenticated maintainer can optionally publish
+the bundle under an existing account namespace:
+
+```bash
+smithery mcp publish ./dist/onepassword-agent-mcp-VERSION.mcpb -n YOUR_NAMESPACE/onepassword-agent-mcp
 ```
 
 Smithery publication requires its own account authorization; the npm/MCP Registry
