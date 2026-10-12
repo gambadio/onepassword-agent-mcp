@@ -6,7 +6,7 @@
     "url": "https://github.com/gambadio/onepassword-agent-mcp",
     "source": "github"
   },
-  "version": "0.3.8",
+  "version": "0.4.0",
   "icons": [
     {
       "src": "https://raw.githubusercontent.com/gambadio/onepassword-agent-mcp/main/public/assets/logo.svg",
@@ -20,7 +20,7 @@
     {
       "registryType": "npm",
       "identifier": "onepassword-agent-mcp",
-      "version": "0.3.8",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       },
