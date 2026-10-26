@@ -1,6 +1,6 @@
 {
   "name": "onepassword-agent-mcp",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Local MCP server for clipboard secret capture, encrypted 1Password handles, and unattended access.",
   "mcpName": "io.github.gambadio/onepassword-agent-mcp",
   "type": "module",

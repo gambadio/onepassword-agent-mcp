@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "onepassword-agent-mcp",
   "display_name": "1Password Agent MCP",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Save and use approved 1Password secrets locally without exposing plaintext to AI agents.",
   "long_description": "Local stdio MCP bridge with encrypted handles, clipboard capture, and a local approval dashboard. Requires the 1Password CLI (op) installed and authorized on the same computer. Copy, paste, and clipboard capture act on that computer. This bundle does not install 1Password or configure unattended access. Not affiliated with or endorsed by 1Password.",
   "author": {
