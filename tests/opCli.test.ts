@@ -100,7 +100,7 @@ test("custom field types and purposes are classified regardless of casing or fie
   assert.equal(candidates[2].username, undefined);
 });
 
-test("candidate item limit keeps all fields and isolates unreadable items", async (t) => {
+test("candidate item limit keeps all fields and stops on a connection failure", async (t) => {
   const f = await fixture(t);
   const item = { id: "good", title: "Synthetic", category: "LOGIN", vault: { id: "vault-fixture" }, fields: [{ id: "username", value: "fixture" }, { id: "password", type: "CONCEALED" }] };
   t.mock.method(f.op, "run", async () => ({ stdout: JSON.stringify([item, { ...item, id: "bad" }]), stderr: "" }));
@@ -108,9 +108,7 @@ test("candidate item limit keeps all fields and isolates unreadable items", asyn
   const limited = await f.op.listCandidates({ key: Buffer.alloc(32, 8), limit: 1 });
   assert.equal(limited.shown, 2);
   assert.equal(limited.limited, true);
-  const partial = await f.op.listCandidates({ key: Buffer.alloc(32, 8) });
-  assert.equal(partial.shown, 2);
-  assert.equal(partial.failedItems, 1);
+  await assert.rejects(f.op.listCandidates({ key: Buffer.alloc(32, 8) }), /Unavailable/);
 });
 
 test("move and delete use explicit vault scopes", async (t) => {

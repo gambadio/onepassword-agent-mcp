@@ -6,6 +6,10 @@ interface RunResult {
 }
 export declare class OpCli {
     private readonly settings;
+    private static summaries;
+    private static fields;
+    private static queue;
+    static invalidateCandidates(): void;
     private resolvedExecutable?;
     constructor(settings: Settings);
     executablePath(): Promise<string>;
@@ -43,6 +47,7 @@ export declare class OpCli {
         mode?: CandidateMode;
         group?: CandidateGroup;
     }): Promise<CandidateSearchResult>;
+    private transferCandidate;
     getItem(item: string, vault?: string, reveal?: boolean): Promise<OpItemDetail>;
     itemToCandidates(item: OpItemDetail, key: Buffer, fallbackVault?: string, mode?: CandidateMode): Candidate[];
     private mapWithConcurrency;

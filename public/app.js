@@ -73,6 +73,7 @@ accessEnabled.addEventListener("change", () => changeAccess("PATCH", { enabled: 
 document.querySelector("#accessRemoveBtn").addEventListener("click", () => changeAccess("DELETE"));
 document.querySelector("#accessTestBtn").addEventListener("click", testAccess);
 
+const sourceCatalogs = new Map();
 let sourceRequest = 0;
 let mcpRequest = 0;
 let refreshRequest = 0;
@@ -113,7 +114,7 @@ document.addEventListener("keydown", (event) => {
 sourceSearchInput.addEventListener("input", () => {
   sourceRequest += 1;
   window.clearTimeout(sourceSearchTimer);
-  sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 350);
+  sourceSearchTimer = window.setTimeout(() => runAction(loadSourceCandidates, { quiet: true }), 80);
 });
 sourceVaultSelect.addEventListener("change", () => {
   runAction(loadSourceCandidates);
@@ -152,6 +153,7 @@ await runAction(async () => {
 }, { quiet: true });
 
 async function refresh() {
+  sourceCatalogs.clear();
   const request = ++refreshRequest;
   sourceRequest += 1;
   mcpRequest += 1;
@@ -421,23 +423,33 @@ async function loadSourceCandidates() {
   }
   sourceCandidatesEl.append(empty("Searching 1Password..."));
 
-  const params = new URLSearchParams({
-    vault,
-    limit: sourceLimitInput.value || "500",
-    mode: "primary",
-    group: sourceGroupSelect.value || "all",
-  });
-  const query = sourceSearchInput.value.trim();
-  if (query) params.set("q", query);
-
   try {
-    const result = await api(`/api/op/candidates?${params}`);
+    let catalog = sourceCatalogs.get(vault);
+    if (!catalog || catalog.expires < Date.now()) {
+      const params = new URLSearchParams({ vault, limit: "100000", mode: "primary" });
+      const promise = api(`/api/op/candidates?${params}`);
+      catalog = { expires: Date.now() + 60000, promise };
+      sourceCatalogs.set(vault, catalog);
+      promise.catch(() => { if (sourceCatalogs.get(vault) === catalog) sourceCatalogs.delete(vault); });
+    }
+    const result = await catalog.promise;
     if (request !== sourceRequest) return;
-    renderSourceCandidates(result);
+    const query = sourceSearchInput.value.trim().toLowerCase();
+    const group = sourceGroupSelect.value || "all";
+    const matched = result.items.filter(item => {
+      const text = [item.title, item.category, item.vaultName, ...(item.sites || [])].join(" ").toLowerCase();
+      return query.split(/\s+/).every(word => text.includes(word));
+    });
+    const groups = { all: matched.length, login: 0, api: 0, card: 0, note: 0, other: 0 };
+    for (const item of matched) groups[groupFromCategory(item.category)] += 1;
+    const filtered = matched.filter(item => group === "all" || groupFromCategory(item.category) === group);
+    const limit = Math.max(1, Math.min(Number(sourceLimitInput.value) || 500, 500));
+    renderSourceCandidates({ ...result, items: filtered.slice(0, limit), shown: Math.min(filtered.length, limit),
+      matched: filtered.length, activeGroup: group, groups, limited: result.limited || filtered.length > limit });
   } catch (error) {
     if (request !== sourceRequest) return;
     sourceCandidatesEl.innerHTML = "";
-    sourceCandidatesEl.append(empty("Could not load items. Unlock 1Password and refresh to retry."));
+    sourceCandidatesEl.append(empty(`${error.message || "Could not load items."} Click Search to retry.`));
     throw error;
   }
 }
@@ -640,7 +652,7 @@ async function loadMcpCandidates() {
   } catch (error) {
     if (request !== mcpRequest) return;
     mcpCandidatesEl.innerHTML = "";
-    mcpCandidatesEl.append(empty("Could not load items. Unlock 1Password and refresh to retry."));
+    mcpCandidatesEl.append(empty(`${error.message || "Could not load items."} Click Search to retry.`));
     throw error;
   }
 }

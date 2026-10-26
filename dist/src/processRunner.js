@@ -87,10 +87,12 @@ export async function runProcess(command, args, options = {}) {
                 return reject(failure);
             if (code !== 0) {
                 // CLI diagnostics can echo field values. Never include raw output in errors.
-                const hint = code === 127 ? " Executable not found. Check the configured CLI path." : /sign.?in|authoriz|authenticat|locked|biometric/i.test(stderr)
-                    ? " Open and unlock 1Password and approve CLI access."
-                    : /category/i.test(stderr) ? " The CLI rejected the item category or template."
-                        : /vault|permission|access denied/i.test(stderr) ? " Check vault access and CLI authorization." : "";
+                const hint = /RequestDelegatedSession/i.test(stderr)
+                    ? " 1Password could not establish a CLI session. A rate limit may be active; wait before retrying. Repeated searches will not fix it."
+                    : code === 127 ? " Executable not found. Check the configured CLI path." : /sign.?in|authoriz|authenticat|locked|biometric/i.test(stderr)
+                        ? " Open and unlock 1Password and approve CLI access."
+                        : /category/i.test(stderr) ? " The CLI rejected the item category or template."
+                            : /vault|permission|access denied/i.test(stderr) ? " Check vault access and CLI authorization." : "";
                 return reject(new Error(`Process exited with code ${code ?? "unknown"}.${hint}`));
             }
             resolve({ stdout, stderr });

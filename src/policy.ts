@@ -125,6 +125,7 @@ export class PolicyService {
   async createFromCandidate(candidateToken: string, overrides: Partial<Grant>): Promise<Grant> {
     const key = await loadOrCreateKey();
     const candidate = openJson<CandidatePayload>(candidateToken, key);
+    if (candidate.transferOnly) throw new Error("Choose item fields from the agent vault before approving access.");
     return await this.createGrant({
       title: overrides.title || candidate.title,
       username: overrides.username ?? candidate.username,

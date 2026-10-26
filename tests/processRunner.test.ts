@@ -46,3 +46,12 @@ test("timeout removes a stubborn grandchild, not just its shell", { skip: proces
     assert.throws(() => process.kill(pid, 0), { code: "ESRCH" });
   } finally { await fs.rm(dir, { recursive: true, force: true }); }
 });
+
+test("delegated session failures explain the connection problem without leaking CLI diagnostics", async () => {
+  await assert.rejects(runProcess(process.execPath, ["-e", "process.stderr.write('RequestDelegatedSession: cannot setup session. SYNTHETIC_PRIVATE_DIAGNOSTIC');process.exit(1)"]), (error: unknown) => {
+    const message = (error as Error).message;
+    assert.match(message, /session.*rate limit/i);
+    assert.equal(message.includes("SYNTHETIC_PRIVATE_DIAGNOSTIC"), false);
+    return true;
+  });
+});

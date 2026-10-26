@@ -10,6 +10,10 @@ import { formatSites } from "./siteMatch.js";
 import { AccessStore } from "./access.js";
 export class OpCli {
     settings;
+    static summaries = new Map();
+    static fields = new Map();
+    static queue = Promise.resolve();
+    static invalidateCandidates() { this.summaries.clear(); this.fields.clear(); }
     resolvedExecutable;
     constructor(settings) {
         this.settings = settings;
@@ -162,7 +166,7 @@ export class OpCli {
     }
     async listCandidates(options) {
         const vault = options.vault || this.settings.defaultVault;
-        const limit = Math.max(1, Math.min(options.limit || 500, 500));
+        const limit = Math.max(1, Math.min(options.limit || 500, options.mode === "primary" ? 100_000 : 500));
         const query = (options.query || "").trim().toLowerCase();
         const group = options.group || "all";
         const args = [
@@ -174,26 +178,43 @@ export class OpCli {
         ];
         if (vault)
             args.push("--vault", vault);
-        const result = await this.run(args, { timeoutMs: 60_000 });
-        const items = JSON.parse(result.stdout || "[]");
+        const cacheKey = crypto.createHash("sha256").update(JSON.stringify([process.env.ONEPASSWORD_MCP_HOME, this.settings, vault, await this.opEnv()])).digest("hex");
+        let cached = OpCli.summaries.get(cacheKey);
+        if (!cached || cached.expires < Date.now()) {
+            const promise = this.run(args, { timeoutMs: 30_000 }).then(result => JSON.parse(result.stdout || "[]"));
+            cached = { expires: Date.now() + 60_000, promise };
+            if (OpCli.summaries.size >= 32)
+                OpCli.summaries.delete(OpCli.summaries.keys().next().value);
+            OpCli.summaries.set(cacheKey, cached);
+            promise.catch(() => { if (OpCli.summaries.get(cacheKey)?.promise === promise)
+                OpCli.summaries.delete(cacheKey); });
+        }
+        const items = await cached.promise;
         const matchedItems = query ? items.filter((item) => itemMatchesQuery(item, query)) : items;
         const groups = countGroups(matchedItems);
         const groupedItems = group === "all" ? matchedItems : matchedItems.filter((item) => itemGroup(item) === group);
-        let failedItems = 0;
-        const details = await this.mapWithConcurrency(groupedItems.slice(0, limit), 6, async (item) => {
-            try {
-                return await this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault);
-            }
-            catch {
-                failedItems += 1;
-                return null;
-            }
-        });
-        const candidates = details.filter((item) => item !== null).flatMap((item) => this.itemToCandidates(item, options.key, vault, options.mode || "all"));
+        const selected = groupedItems.slice(0, limit);
+        const candidates = options.mode === "primary"
+            ? selected.map(item => this.transferCandidate(item, options.key, vault))
+            : (await this.mapWithConcurrency(selected, 1, async (item) => {
+                const fieldKey = `${cacheKey}:${item.id}:${crypto.createHash("sha256").update(options.key).digest("hex")}`;
+                let cachedFields = OpCli.fields.get(fieldKey);
+                if (!cachedFields || cachedFields.expires < Date.now()) {
+                    const promise = this.getItem(item.id || item.title, item.vault?.id || item.vault?.name || vault)
+                        .then(detail => this.itemToCandidates(detail, options.key, vault, "all"));
+                    cachedFields = { expires: Date.now() + 60_000, promise };
+                    if (OpCli.fields.size >= 500)
+                        OpCli.fields.delete(OpCli.fields.keys().next().value);
+                    OpCli.fields.set(fieldKey, cachedFields);
+                    promise.catch(() => { if (OpCli.fields.get(fieldKey)?.promise === promise)
+                        OpCli.fields.delete(fieldKey); });
+                }
+                return await cachedFields.promise;
+            })).flat();
         return {
             items: candidates,
-            failedItems,
-            loadedItems: details.length - failedItems,
+            failedItems: 0,
+            loadedItems: selected.length,
             limited: groupedItems.length > limit,
             total: items.length,
             matched: groupedItems.length,
@@ -202,6 +223,15 @@ export class OpCli {
             activeGroup: group,
             groups,
         };
+    }
+    transferCandidate(item, key, vault) {
+        const payload = {
+            secretRef: "", transferOnly: true, title: item.title, itemTitle: item.title,
+            itemId: item.id, vaultId: item.vault?.id || vault, vaultName: item.vault?.name,
+            fieldLabel: "", kind: "custom", category: item.category, sites: extractSites(item),
+            issuedAt: new Date().toISOString(),
+        };
+        return { ...payload, token: sealJson(payload, key) };
     }
     async getItem(item, vault, reveal = false) {
         const args = ["item", "get", item, "--format", "json"];
@@ -277,9 +307,15 @@ export class OpCli {
     }
     async run(args, options = {}) {
         const env = await this.opEnv();
-        return await runProcess(await this.executablePath(), env.OP_SERVICE_ACCOUNT_TOKEN ? args : this.withGlobalArgs(args), {
+        const executable = await this.executablePath();
+        const operation = OpCli.queue.then(() => runProcess(executable, env.OP_SERVICE_ACCOUNT_TOKEN ? args : this.withGlobalArgs(args), {
             ...options, osPipe: true, env,
-        });
+        }));
+        OpCli.queue = operation.catch(() => { });
+        const result = await operation;
+        if (["create", "move", "delete", "edit"].includes(args[1]))
+            OpCli.invalidateCandidates();
+        return result;
     }
     withGlobalArgs(args) {
         if (!this.settings.account)

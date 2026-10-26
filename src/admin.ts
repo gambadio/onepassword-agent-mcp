@@ -63,6 +63,7 @@ export async function createAdminApp(options: AdminAppOptions = {}) {
   app.use("/api", adminGuard);
 
   app.get("/api/status", async (_req, res) => {
+    OpCli.invalidateCandidates();
     const file = await store.load();
     const publicGrants = await policyService.listPublicGrants();
     const op = new OpCli(file.settings);

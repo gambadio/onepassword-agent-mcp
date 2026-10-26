@@ -124,6 +124,7 @@ export interface SecretHandlePayload {
 }
 
 export interface CandidatePayload {
+  transferOnly?: boolean;
   secretRef: string;
   title: string;
   username?: string;

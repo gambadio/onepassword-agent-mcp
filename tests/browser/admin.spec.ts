@@ -66,7 +66,7 @@ test("global Refresh reloads both candidate lists after authorization recovers",
   expect(errors).toEqual([]);
 });
 
-for (const pane of ["mcp", "source"]) {
+for (const pane of ["mcp"]) {
  for (const staleFailure of [true, false]) {
   test(`${pane} search ignores an older ${staleFailure ? "failure" : "successful response"}`, async ({ page }) => {
     const { errors } = await setup(page);
@@ -249,5 +249,29 @@ test("token clears while its save request is still pending", async ({ page }) =>
   await pending!.fulfill({ status: 400, json: { error: "Synthetic failure" } });
   await expect(token).toBeEnabled();
   await expect(page.locator("#accessMessage")).toContainText("could not be saved");
+  expect(errors).toEqual([]);
+});
+
+
+test("source search during loading shares one catalog and filters locally afterward", async ({ page }) => {
+  const { errors } = await setup(page);
+  const pending: Route[] = [];
+  await page.route("**/api/op/candidates?**", async route => {
+    if (new URL(route.request().url()).searchParams.get("mode") !== "primary") return route.fallback();
+    pending.push(route);
+  });
+  await page.locator("#sourceVaultSelect").selectOption("source");
+  await expect.poll(() => pending.length).toBe(1);
+  await page.locator("#sourceSearchInput").fill("sweeplify");
+  await pending[0].fulfill({ json: { ...result(), total: 2, matched: 2, shown: 2, items: [
+    { itemId: "one", title: "Sweeplify", category: "LOGIN", sites: [], token: "one" },
+    { itemId: "two", title: "Other", category: "LOGIN", sites: [], token: "two" },
+  ] } });
+  await expect(page.locator("#sourceCandidates")).toContainText("Sweeplify");
+  await expect(page.locator("#sourceCandidates")).not.toContainText("Other");
+  await page.locator("#sourceSearchInput").fill("other");
+  await expect(page.locator("#sourceCandidates")).toContainText("Other");
+  await expect(page.locator("#sourceCandidates")).not.toContainText("Sweeplify");
+  expect(pending).toHaveLength(1);
   expect(errors).toEqual([]);
 });
